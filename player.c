@@ -109,7 +109,7 @@ static struct rgb_t frequency_to_rgb(uint16_t freq) {
     // hue == 0 corresponds to 0° and hue == 1.0f corresponds to 240° on this graph
 
     if (freq == 0)
-	    return {0, 0, 0};
+	    return (struct rgb_t) {0, 0, 0};
 
     // bring the frequency to the [0;1] interval
     static const float min = log2f(NOTE_B0);
