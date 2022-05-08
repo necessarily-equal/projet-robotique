@@ -15,7 +15,7 @@
 #include "leds.h"
 
 // ARM headers
-//#include <arm_math.h>
+#include <arm_math.h>
 
 // Module headers
 #include <mic_processing.h>
@@ -90,76 +90,6 @@ static command_t status=WAIT_CMD;
 /* Module local functions.                                                   */
 /*===========================================================================*/
 
-/**
- * @brief               audio processing function taken from TP 5
- * 
- * @param data          Buffer containing 4 times 160 mic samples.
- *                      The samples are directly sorted by the micro.
- * @param num_samples   Tells how many data we get in total (tpy:640 see above)
- */
-void process_audio_data(int16_t *data, uint16_t num_samples){
-    /*  We get 160 samples per mic every 10ms. So we fill the samples buffers
-     *  to reach 1024 samples, then we compute the FFTs.
-     *  Sw we fill the samples buffers to reach
-     */
-	static uint16_t nb_samples = 0;
-	static uint8_t mustSend = 0;
-
-	//loop to fill the buffers
-	for(uint16_t i = 0 ; i < num_samples ; i+=4){
-		//construct an array of complex numbers. Put 0 to the imaginary part
-		//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT];
-		micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
-		//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
-		//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];
-
-		nb_samples++;
-
-		//micRight_cmplx_input[nb_samples] = 0;
-		micLeft_cmplx_input[nb_samples] = 0;
-		//micBack_cmplx_input[nb_samples] = 0;
-		//micFront_cmplx_input[nb_samples] = 0;
-
-		//nb_samples++;
-
-		//stop when buffer is full
-		if(nb_samples >= (2 * FFT_SIZE)){
-			break;
-		}
-	}
-
-	if(nb_samples >= (2 * FFT_SIZE)){
-		/*	FFT proccessing
-		*
-		*	This FFT function stores the results in the input buffer given.
-		*	This is an "In Place" function. 
-		*/
-
-		//doFFT_optimized(FFT_SIZE, micRight_cmplx_input);
-		doFFT_optimized(FFT_SIZE, micLeft_cmplx_input);
-		//doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
-		//doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
-
-		/*	Magnitude processing
-		*
-		*	Computes the magnitude of the complex numbers and
-		*	stores them in a buffer of FFT_SIZE because it only contains
-		*	real numbers.
-		*
-		*/
-		//arm_cmplx_mag_f32(micRight_cmplx_input, micRight_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micLeft_cmplx_input, micLeft_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micFront_cmplx_input, micFront_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micBack_cmplx_input, micBack_output, FFT_SIZE);
-
-		nb_samples = 0;
-		mustSend++;
-
-		mic_remote(micLeft_output);
-	}
-}
-
-
 void mic_remote(float* data){
     float max_norm = MIN_VALUE_THRESHOLD;
     int16_t max_norm_index = -1;
@@ -214,33 +144,111 @@ void mic_remote(float* data){
             break;
 
     case WAIT_CMD:
+		right_angle_turn(CLOCKWISE);
         status = IDLE_CMD;
         break;
     case MOVE_CMD:
+		right_angle_turn(CLOCKWISE);
         status = IDLE_CMD;
         break;
     case START_MAZE_CMD:
+		right_angle_turn(CLOCKWISE);
         status = IDLE_CMD;
         break;
     case RST_MAZE_CMD:
+		right_angle_turn(CLOCKWISE);
         status = IDLE_CMD;
         break;
     case U_TURN_CMD:
+		right_angle_turn(CLOCKWISE);
         status = IDLE_CMD;
         break;
     case TURN_LEFT_CMD:
+		right_angle_turn(COUNTERCLOCKWISE);
         status = IDLE_CMD;
         break;
     case TURN_RIGHT_CMD:
+		right_angle_turn(COUNTERCLOCKWISE);
         status = IDLE_CMD;
         break;
     case SLOW_DOWN_CMD:
+		right_angle_turn(COUNTERCLOCKWISE);
         status = IDLE_CMD;
         break;
     case SPEED_UP_CMD:
+		right_angle_turn(COUNTERCLOCKWISE);
         status = IDLE_CMD;
         break;
     }
+}
+
+/**
+ * @brief               audio processing function taken from TP 5
+ * 
+ * @param data          Buffer containing 4 times 160 mic samples.
+ *                      The samples are directly sorted by the micro.
+ * @param num_samples   Tells how many data we get in total (tpy:640 see above)
+ */
+void process_audio_data(int16_t *data, uint16_t num_samples){
+    /*  We get 160 samples per mic every 10ms. So we fill the samples buffers
+     *  to reach 1024 samples, then we compute the FFTs.
+     *  Sw we fill the samples buffers to reach
+     */
+	static uint16_t nb_samples = 0;
+	static uint8_t mustSend = 0;
+
+	//loop to fill the buffers
+	for(uint16_t i = 0 ; i < num_samples ; i+=4){
+		//construct an array of complex numbers. Put 0 to the imaginary part
+		//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT];
+		micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
+		//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
+		//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];
+
+		nb_samples++;
+
+		//micRight_cmplx_input[nb_samples] = 0;
+		micLeft_cmplx_input[nb_samples] = 0;
+		//micBack_cmplx_input[nb_samples] = 0;
+		//micFront_cmplx_input[nb_samples] = 0;
+
+		//nb_samples++;
+
+		//stop when buffer is full
+		if(nb_samples >= (2 * FFT_SIZE)){
+			break;
+		}
+	}
+
+	if(nb_samples >= (2 * FFT_SIZE)){
+		/*	FFT proccessing
+		*
+		*	This FFT function stores the results in the input buffer given.
+		*	This is an "In Place" function. 
+		*/
+
+		//doFFT_optimized(FFT_SIZE, micRight_cmplx_input);
+		doFFT_optimized(FFT_SIZE, micLeft_cmplx_input, micLeft_output);
+		//doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
+		//doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
+
+		/*	Magnitude processing
+		*
+		*	Computes the magnitude of the complex numbers and
+		*	stores them in a buffer of FFT_SIZE because it only contains
+		*	real numbers.
+		*
+		*/
+		//arm_cmplx_mag_f32(micRight_cmplx_input, micRight_output, FFT_SIZE);
+		//arm_cmplx_mag_f32(micLeft_cmplx_input, micLeft_output, FFT_SIZE);
+		//arm_cmplx_mag_f32(micFront_cmplx_input, micFront_output, FFT_SIZE);
+		//arm_cmplx_mag_f32(micBack_cmplx_input, micBack_output, FFT_SIZE);
+
+		nb_samples = 0;
+		mustSend++;
+
+		mic_remote(micLeft_output);
+	}
 }
 
 /*===========================================================================*/
@@ -251,9 +259,11 @@ static THD_WORKING_AREA(wa_mic_processing, 1024);
 static THD_FUNCTION(thd_mic_processing, arg){
 	(void) arg;
 	chRegSetThreadName(__FUNCTION__);
+
 	systime_t time;
 
 	while(1){
+		time = chVTGetSystemTime();
 		mic_start(&process_audio_data);
 		chThdSleepUntilWindowed(time, time + MS2ST(MIC_THD_PERIOD));
 	}

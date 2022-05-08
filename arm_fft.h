@@ -3,8 +3,8 @@
  * @brief   FFT optimized for ARM based e-puck 2, taken from TP 5
  */
 
-#ifndef _MOD_ARM_FFT_H_
-#define _MOD_ARM_FFT_H_
+#ifndef _ARM_FFT_H_
+#define _ARM_FFT_H_
 
 /*========================================================================*/
 /*  External declarations                                                 */
@@ -20,4 +20,4 @@
 void doFFT_optimized(uint16_t size, float* complex_buffer_input,
 									float* complex_buffer_output);
 
-#endif /* _MOD_ARM_FFT_H_ */
+#endif /* _ARM_FFT_H_ */

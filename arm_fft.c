@@ -15,7 +15,7 @@
 #include <arm_const_structs.h>
 
 // Module headers
-#include <mod_arm_fft.h>
+#include <arm_fft.h>
 
 /*===========================================================================*/
 /*  Module exported functions                                                */

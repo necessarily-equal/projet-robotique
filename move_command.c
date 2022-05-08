@@ -14,7 +14,7 @@
 #include "msgbus/messagebus.h"
 
 // e-puck 2 main processor headers
-#include <motor.h>
+#include <motors.h>
 
 // Module headers
 #include <move_command.h>

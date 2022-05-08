@@ -24,13 +24,13 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-#define ACTION_START        'E'
-#define ACTION_LEFT         'L'
-#define ACTION_STRAIGHT     'S'
-#define ACTION_RIGHT        'R'
-#define ACTION_BACK         'B'
-#define ACTION_END          'D'
-#define ACTION_VOID         'V'
+#define ACTION_START        'E'     // begin maze navigation
+#define ACTION_LEFT         'L'     // turn left
+#define ACTION_STRAIGHT     'S'     // go straight forward
+#define ACTION_RIGHT        'R'     // turn right
+#define ACTION_BACK         'B'     // u trurn
+#define ACTION_END          'D'     // detect the maze exit
+#define ACTION_VOID         'V'     // no action found
 #define ACTION_DELAY        2000
 
 #define WALL_THRESHOLD      80
