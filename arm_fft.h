@@ -14,7 +14,7 @@
  * @brief 
  * 
  * @param size 
- * @param complex_buffer_input 
+ * @param complex_buffer_input 		// modified !
  * @param complex_buffer_output 
  */
 void doFFT_optimized(uint16_t size, float* complex_buffer_input,

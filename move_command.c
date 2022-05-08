@@ -112,8 +112,8 @@ void set_manual_speed(uint16_t left_speed, uint16_t right_speed){
 }
 
 void update_speed(uint16_t updated_speed){
-    if(update_speed < MAX_SPEED){
-        speed = update_speed;
+    if(updated_speed < MAX_SPEED){
+        speed = updated_speed;
     }
     else{
         speed = MAX_SPEED;

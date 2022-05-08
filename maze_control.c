@@ -18,7 +18,6 @@
 // Module headers
 #include <maze_control.h>
 #include <move_command.h>
-//#include <ir_sensors.h>   TODO!!!
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -177,7 +176,7 @@ static THD_FUNCTION(thd_maze, arg)
 
     uint16_t i = 0;
 
-    while(!exited_maze){
+    while(!exited_maze && !chThdShouldTerminateX()){
         chSysLock();
         if(is_paused)
             chSchGoSleeps(CH_STATE_SUSPENDED);
@@ -194,7 +193,7 @@ static THD_FUNCTION(thd_maze, arg)
         }
     }
 
-    if(!optimized_maze){
+    if(!optimized_maze && !chThdShouldTerminateX()){
         // optimizes maze path
     }
 

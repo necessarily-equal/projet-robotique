@@ -30,6 +30,24 @@ typedef enum{
 /**
  * @brief 				Init the microphones' thread
  */
-void mic_processing_init(void);
+void mic_create_thd(void);
+
+/**
+ * @brief 
+ * 
+ */
+void mic_stop_thd(void);
+
+/**
+ * @brief 
+ * 
+ */
+void mic_pause_thd(void);
+
+/**
+ * @brief 
+ * 
+ */
+void mic_resume_thd(void);
 
 #endif /* _MOD_AUDIO_PROCESSING_H_ */

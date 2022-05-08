@@ -86,6 +86,16 @@ static float micLeft_output[FFT_SIZE];
 //Default command state
 static command_t status=WAIT_CMD;
 
+//Thread state
+static bool is_recording = false;
+static bool is_paused = false;
+
+/*===========================================================================*/
+/* Module thread pointers                                                    */
+/*===========================================================================*/
+
+static thread_t* ptr_mic_thd;
+
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
@@ -262,7 +272,15 @@ static THD_FUNCTION(thd_mic_processing, arg){
 
 	systime_t time;
 
-	while(1){
+	while(true){
+		chSysLock();
+		if (is_paused){
+			chSchGoSleepS(CH_STATE_SUSPENDED);
+		}
+		chSysUnlock();
+		if (chThdShouldTerminateX()){
+			chThdExit(0);
+		}
 		time = chVTGetSystemTime();
 		mic_start(&process_audio_data);
 		chThdSleepUntilWindowed(time, time + MS2ST(MIC_THD_PERIOD));
@@ -273,7 +291,50 @@ static THD_FUNCTION(thd_mic_processing, arg){
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
-void mic_processing_init(void){
-    chThdCreateStatic(wa_mic_processing, sizeof(wa_mic_processing),
+/**
+ * @brief 
+ * 
+ */
+void mic_create_thd(void){
+	if(!is_recording){
+		ptr_mic_thd = chThdCreateStatic(wa_mic_processing, sizeof(wa_mic_processing),
                       NORMALPRIO, thd_mic_processing, NULL);
+		is_recording = true;
+	}
+}
+
+/**
+ * @brief 
+ * 
+ */
+void mic_stop_thd(void){
+	if (is_recording){
+		mic_resume_thd();
+		chThdTerminate(ptr_mic_thd);
+		chThdWait(ptr_mic_thd);
+		is_recording = false;
+		is_paused = false;
+	}
+}
+
+/**
+ * @brief 
+ * 
+ */
+void mic_pause_thd(void){
+	if(is_recording)
+		is_paused = true;
+}
+
+/**
+ * @brief 
+ * 
+ */
+void mic_resume_thd(void){
+	chSysLock();
+	if(is_recording && is_paused){
+		chSchWakeupS(ptr_mic_thd, CH_STATE_READY);
+		is_paused = false;
+	}
+	chSysUnlock();
 }

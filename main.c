@@ -22,6 +22,9 @@
 
 // Module headers
 #include <main.h>
+
+#include <operation_mode.h>
+
 //#include <lfr_regulator.h>
 //#include <image_processing.h>
 //#include <distance.h>
@@ -34,7 +37,7 @@
 /* Module constants                                                          */
 /*===========================================================================*/
 
-#define MAIN_PERIOD     100 // in milliseconds
+#define MAIN_SLEEP     100 // in milliseconds
 
 /*===========================================================================*/
 /* Module local functions.                                                   */
@@ -69,8 +72,9 @@ static void init_all(void){
     mpu_init();
 
     motors_init();
+    mic_create_thd();
+    //mic_stop_thd();
     //dist_init();
-    mic_processing_init();
     //player_init();
 
     
@@ -92,10 +96,10 @@ static void init_all(void){
 int main(void)
 {
     init_all();
-    //create_thd_process_cmd();
+    //create_mode_thd(); not working for now
 
     while(true){
-        chThdSleepMilliseconds(MAIN_PERIOD);
+        chThdSleepMilliseconds(MAIN_SLEEP);
     }
 }
 
@@ -106,21 +110,3 @@ void __stack_chk_fail(void)
 {
     chSysHalt("Stack smashing detected");
 }
-
-/*
-    uint16_t freq = 31;
-    while(1) {
-        if (dist_obstacle_is_close()) {
-            freq = 31;
-            //set_led(4, 1);
-        } else {
-            freq *= 1.1f;
-            if (freq > 4978) freq = 31;
-            //set_led(4, 0);
-        }
-
-        player_set_frequency(freq);
-        chThdSleepMilliseconds(100);
-    }
-}
-*/
