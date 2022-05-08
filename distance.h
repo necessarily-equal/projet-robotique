@@ -5,5 +5,7 @@
 // is better than sensors/VL53L0X/VL53L0X.c, which manages to update the
 // distance only every 100ms.
 
+#include <stdbool.h>
+
 void dist_init(void);
 bool dist_obstacle_is_close(void);

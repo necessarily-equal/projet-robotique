@@ -100,7 +100,7 @@ struct rgb_t {
     uint8_t b;
 };
 
-void leds_init(void) {
+void player_init(void) {
     spi_comm_start();
 }
 
@@ -143,7 +143,7 @@ static struct rgb_t frequency_to_rgb(uint16_t freq) {
     return result;
 }
 
-void leds_set_frequency(uint16_t freq) {
+void player_set_frequency(uint16_t freq) {
     const struct rgb_t color = frequency_to_rgb(freq);
 
     set_rgb_led(0, color.r, color.g, color.b);
