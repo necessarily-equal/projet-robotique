@@ -46,7 +46,7 @@
  * 
  * @param mode 
  */
-void launch_mode(){
+void launch_mode(void){
     switch (get_selector())
         {
         case IDLE_MODE:
