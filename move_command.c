@@ -6,6 +6,7 @@
 // C standard headers
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 // ChibiOS headers
 #include "hal.h"
@@ -23,22 +24,28 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
+//Geometric parameters
 #define PI                  3.1415926536f
 #define WHEEL_SEPARATION    5.35f   // [cm]
-#define WHEEL_TURN_STEPS    1000    //Number of steps for one turn
 #define WHEEL_PERIMETER     13      // [cm]
-#define ADJUSTED_90DEG_TURN 3.8     // Adjusted value based on experiments
-#define TURNING_SPEED       500
-#define NULL_SPEED          0
-#define MAX_SPEED           800
 #define EPUCK_PERIMETER     (PI * WHEEL_SEPARATION)
 #define U_TURN              EPUCK_PERIMETER/2
+
+//Speed
+#define TURNING_SPEED       500
+#define DEFAULT_SPEED		500
+#define NULL_SPEED          0
+#define MAX_SPEED			800
+
+//Steppers constants
+#define WHEEL_TURN_STEPS    1000    //Number of steps for one turn
+#define ADJUSTED_90DEG_TURN 3.8     // Adjusted value based on experiments
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
-static uint16_t speed = MAX_SPEED/2;
+static int16_t current_speed = DEFAULT_SPEED;
 
 /*===========================================================================*/
 /* Module exported functions.                                                */
@@ -91,8 +98,8 @@ void move(float position, direction_t direction){
     final_l_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
 	final_r_pos=position * WHEEL_PERIMETER / WHEEL_PERIMETER;
 
-    left_motor_set_speed(direction*speed);
-	right_motor_set_speed(direction*speed);
+    left_motor_set_speed(direction*current_speed);
+	right_motor_set_speed(direction*current_speed);
 
     l_pos=direction*left_motor_get_pos();
 	r_pos=direction*right_motor_get_pos();
@@ -106,27 +113,45 @@ void move(float position, direction_t direction){
 	right_motor_set_speed(NULL_SPEED);
 }
 
-void set_manual_speed(uint16_t left_speed, uint16_t right_speed){
-	left_motor_set_speed(left_speed);
-	right_motor_set_speed(right_speed);
+void set_default_speed(void){
+	current_speed = DEFAULT_SPEED;
 }
 
-void update_speed(uint16_t updated_speed){
-    if(updated_speed < MAX_SPEED){
-        speed = updated_speed;
-    }
-    else{
-        speed = MAX_SPEED;
-    }
+void set_current_speed(int16_t new_speed)
+{
+	if(new_speed > MAX_SPEED)
+		current_speed = MAX_SPEED;
+	else if(-new_speed < MAX_SPEED)
+		current_speed = -MAX_SPEED;
+	else
+		current_speed = new_speed;
 }
 
-uint16_t get_speed(void) {
-	return speed;
+int16_t get_current_speed(void)
+{
+	return current_speed;
 }
 
+void set_lr_speed(int left_speed, int right_speed)
+{
+
+	if(left_speed > MAX_SPEED)
+		left_motor_set_speed(MAX_SPEED);
+	else if(left_speed < -MAX_SPEED)
+		left_motor_set_speed(-MAX_SPEED);
+	else
+		left_motor_set_speed(left_speed);
+
+	if(right_speed > MAX_SPEED)
+		right_motor_set_speed(MAX_SPEED);
+	else if(right_speed < -MAX_SPEED)
+		right_motor_set_speed(-MAX_SPEED);
+	else
+		right_motor_set_speed(right_speed);
+}
 
 void stop_move(void){
-    speed=NULL_SPEED;
+    current_speed = NULL_SPEED;
     left_motor_set_speed(NULL_SPEED);
 	right_motor_set_speed(NULL_SPEED);
 }

@@ -17,11 +17,13 @@
 #include <camera/po8030.h>
 #include "camera/dcmi_camera.h"
 
+#include "selector.h"
+
 
 // Module headers
 #include <main.h>
 #include <ir_sensors.h>
-//#include <maze_control.h>
+#include <maze_control.h>
 #include <mic_processing.h>
 #include <move_command.h>
 #include <communication.h>
@@ -61,6 +63,8 @@ static void init_all(void){
 
     motors_init();
     sensors_init();
+
+    create_link_navigation_thd();
 }
 
 /*===========================================================================*/
@@ -70,6 +74,9 @@ static void init_all(void){
 int main(void)
 {
     init_all();
+
+    set_default_speed();
+
 
     while(true){
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");

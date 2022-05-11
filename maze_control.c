@@ -6,6 +6,7 @@
 // C standard headers
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 // ChibiOS headers
 #include "hal.h"
@@ -15,252 +16,178 @@
 // e-puck 2 main processor headers
 #include "sensors/proximity.h"
 
+#include <chprintf.h>
+
 // Module headers
 #include "maze_control.h"
 #include <ir_sensors.h>
-//#include <tof_sensor.h>
 #include <move_command.h>
 
 /*===========================================================================*/
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-#define ACTION_START        'E'     // begin maze navigation
-#define ACTION_LEFT         'L'     // turn left
-#define ACTION_STRAIGHT     'S'     // go straight forward
-#define ACTION_RIGHT        'R'     // turn right
-#define ACTION_BACK         'B'     // u trurn
-#define ACTION_END          'D'     // detect the maze exit
-#define ACTION_VOID         'V'     // no action found
-#define ACTION_DELAY        2000
+#define ACTION_START            'E'     // begin maze navigation
+#define ACTION_LEFT             'L'     // turn left
+#define ACTION_STRAIGHT         'S'     // go straight forward
+#define ACTION_RIGHT            'R'     // turn right
+#define ACTION_BACK             'B'     // u trurn
+#define ACTION_END              'D'     // detect the maze exit
+#define ACTION_VOID             'V'     // no action found
+#define ACTION_DELAY            2000
 
-#define WALL_THRESHOLD      80
-#define IR1                 0
-#define IR2                 1
-#define IR3                 2
-#define IR4                 3
-#define IR5                 4
-#define IR6                 5
-#define IR7                 6
-#define IR8                 7
 
-#define MAZE_HALF_WIDTH     1.5
-#define CORRECTION_ANGLE    0.2
+
+#define JUNCTION_THRESHOLD      100
+
+
+#define MAZE_NAVIGATION_PERIOD  100
+#define LINK_NAVIGATION_PERIOD  100
+
+/*===========================================================================*/
+/* Wall PI constants.                                                        */
+/*===========================================================================*/
+
+#define WALL_TARGET             250
+#define CORRECTION_THRESHOLD    5
+
+#define LINK_ERROR_THRESHOLD    0.1f
+#define LINK_UPPER_CLAMP        100
+#define LINK_LOWER_CLAMP        -100
+#define LINK_KP                 0.25f
+#define LINK_KI                 0.5f
+#define LINK_KD                 5.0f
+#define MAX_SUM_ERROR 			100
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
 // thread constants
-static bool is_paused = false;
+static bool maze_navigation_paused = false;
 static bool is_navigating_maze = false;
+
+static bool link_navigation_paused = false;
+static bool is_navigating_link = false;
+
 // maze constants
 static bool exited_maze = false;
 static bool optimized_maze = false;
 static bool navigate_optimized_path = false;
-static char saved_actions[100] = ""; // sizeof for number of actions
+static bool junction_detected = false;
+static char saved_actions[100] = "";
 
 /*===========================================================================*/
 /* Module thread pointers.                                                   */
 /*===========================================================================*/
 
-static thread_t *ptr_maze_thd;
+static thread_t *ptr_maze_navigation_thd;
+static thread_t *ptr_link_navigation_thd;
 
-/*===========================================================================*/
-/* Module local functions.                                                   */
-/*===========================================================================*/
-
-void navigate_to_next_junction(void)
+int16_t pid_regulator(float current, float target)
 {
-    messagebus_topic_t *prox_topic = messagebus_find_topic_blocking(&bus,"/proximity");
-    proximity_msg_t prox_values = {0u};
+    float error = 0.0f;
+    float control = 0.0f;
+    float derivative = 0.0f;
 
-    int16_t left_speed = 0, right_speed = 0;
-    int16_t left_ir = 0, right_ir = 0;
+    //Static for integral and derivative
+    static float sum_error = 0.0f;
+    static float last_error = 0.0f;
 
-    while (true) {
-        //Update ir prox values
-        messagebus_topic_wait(prox_topic, &prox_values, sizeof(prox_values));
+    //Calculate the error
+    error = current - target;
 
-        //Navigation
-        if(!is_paused){
-            left_speed = get_speed();
-            left_speed -= prox_values.delta[IR1]*2;
-            left_speed -= prox_values.delta[IR2];
+    if(fabs(error) < LINK_ERROR_THRESHOLD)
+        return 0;
 
-            right_speed = get_speed();
-            right_speed -= prox_values.delta[IR8]*2;
-            right_speed -= prox_values.delta[IR7];
+    //Calculate the integral
+    sum_error += error;
 
-            set_manual_speed(left_speed, right_speed);
-        }
+    //Calcualte the derivative
+    derivative = error - last_error;
 
-        chThdSleepMicroseconds(100);
-        //Junction detection
-        left_ir = prox_values.delta[IR6];
-        right_ir = prox_values.delta[IR3];
-        if (left_ir<WALL_THRESHOLD || right_ir<WALL_THRESHOLD || tof_wall_too_close()){
-            break;
-        }
-    }
-    stop_move();
+    if(sum_error > MAX_SUM_ERROR)
+		sum_error = MAX_SUM_ERROR;
+	else if(sum_error < -MAX_SUM_ERROR)
+		sum_error = -MAX_SUM_ERROR;
+
+    last_error = error;
+    control = LINK_KP * error + LINK_KI * sum_error + LINK_KD * derivative;
+
+    //output clamping
+    if(control > LINK_UPPER_CLAMP)
+		control = LINK_UPPER_CLAMP;
+	else if(control < LINK_LOWER_CLAMP)
+		control = LINK_LOWER_CLAMP;
+
+    return (int16_t)control;
 }
 
-char junction_action(void)
+bool detect_junction(void)
 {
-    messagebus_topic_t *prox_topic = messagebus_find_topic_blocking(&bus,
-        "/proximity");
-    proximity_msg_t prox_values = {0u};
-
-    messagebus_topic_wait(prox_topic, &prox_values, sizeof(prox_values));
-
-    int16_t left_ir = prox_values.delta[IR6];
-    int16_t right_ir = prox_values.delta[IR3];
-
-    //Simple LSRB navigation algorithm based on three detectors
-    if (left_ir<WALL_THRESHOLD && tof_wall_too_close()
-        && right_ir>WALL_THRESHOLD) //Left turn
-        return ACTION_LEFT;
-    else if (left_ir>WALL_THRESHOLD && tof_wall_too_close() &&
-        right_ir<WALL_THRESHOLD) //Right Turn
-        return ACTION_RIGHT;
-    else if (left_ir<WALL_THRESHOLD && tof_wall_too_close() &&
-        right_ir<WALL_THRESHOLD) //T Intersection
-        return ACTION_LEFT; //As left is possible
-    else if (left_ir<WALL_THRESHOLD && !tof_wall_too_close() &&
-        right_ir>WALL_THRESHOLD) //Left T Intersection
-        return ACTION_LEFT; // As Left is possible
-    else if (left_ir>WALL_THRESHOLD && !tof_wall_too_close() &&
-        right_ir<WALL_THRESHOLD) //Right T Tntersection
-        return ACTION_STRAIGHT; //As Straight path is possible
-    else if (left_ir>WALL_THRESHOLD && tof_wall_too_close() &&
-        right_ir>WALL_THRESHOLD) //Dead End
-        return ACTION_BACK;//As no other direction is possible
-    else if (left_ir<WALL_THRESHOLD && !tof_wall_too_close() &&
-        right_ir<WALL_THRESHOLD) //4 Lane intersection
-        return ACTION_LEFT;// As Left is possible
-    return ACTION_VOID;
-}
-
-void navigate_junction(char action){
-    switch (action)
-    {
-    case ACTION_START:
-        move(MAZE_HALF_WIDTH, FORWARD);
-        exited_maze = false;
-        break;
-    case ACTION_LEFT:
-        right_angle_turn(COUNTERCLOCKWISE);
-        break;
-    case ACTION_STRAIGHT:
-        move(MAZE_HALF_WIDTH*2, FORWARD);
-        break;
-    case ACTION_RIGHT:
-        right_angle_turn(CLOCKWISE);
-        break;
-    case ACTION_BACK:
-        u_turn();
-        break;
-    case ACTION_END:
-        stop_move();
-        exited_maze = true;
-        break;
-    default:
-        break;
-    }
+    return false;
 }
 
 /*===========================================================================*/
-/* Module threads                                                            */
+/* Module threads.                                                           */
 /*===========================================================================*/
 
-static THD_WORKING_AREA(wa_maze_thd, 1024);
-static THD_FUNCTION(thd_maze, arg)
+static THD_WORKING_AREA(wa_maze_navigation_thd, 1024);
+static THD_FUNCTION(maze_navigation_thd, arg)
 {
-	chRegSetThreadName(__FUNCTION__);
-    (void) arg;
+    chRegSetThreadName(__FUNCTION__);
+	(void)arg;
 
-    uint16_t i = 0;
-    set_manual_speed(300, 300);
-    chThdSleepMilliseconds(ACTION_DELAY);
-    navigate_to_next_junction();
-
-    while(!exited_maze && !chThdShouldTerminateX()){
-        chSysLock();
-        if(is_paused)
-            chSchGoSleepS(CH_STATE_SUSPENDED);
-        chSysUnlock();
-        //if(navigate_optimized_path && optimized_maze){
-            // to do !!!
-        //}
-        //else{
-            //navigate_to_next_junction();
-            //saved_actions[i] = junction_action();
-            //navigate_junction(saved_actions[i]);
-            //i++;
-            //
-        //}
-        //navigate_junction(junction_action());
-        chThdSleepMilliseconds(ACTION_DELAY);
+    while(!chThdShouldTerminateX() && !exited_maze){
+        //-> takes action
+        //-> stores actions
+        //-> launch segment navigation thd
+        //-> scan for junction
+        //-> if found 
+        //-> stop segment navigation thd
+        //repeat
+        chThdSleepMilliseconds(MAZE_NAVIGATION_PERIOD);
     }
-
-    //if(!optimized_maze && !chThdShouldTerminateX()){
-        // optimizes maze path
-    //}
 
     is_navigating_maze = false;
     chThdExit(0);
 }
 
-/*===========================================================================*/
-/* Module exported functions.                                                */
-/*===========================================================================*/
-
-void maze_reset(void)
+void create_maze_navigation_thd(void)
 {
-    exited_maze = false;
-    memset(saved_actions, 0, sizeof(saved_actions));
-    optimized_maze = false;
-
-    stop_move();
-}
-
-void maze_create_thd(void)
-{
-    if(!is_navigating_maze) {
-        ptr_maze_thd = chThdCreateStatic(wa_maze_thd, sizeof(wa_maze_thd),
-                                         NORMALPRIO, thd_maze, NULL);
+    if(!is_navigating_maze)
+    {
+        ptr_maze_navigation_thd = chThdCreateStatic(wa_maze_navigation_thd,
+            sizeof(wa_maze_navigation_thd), NORMALPRIO, maze_navigation_thd,
+            NULL);
         is_navigating_maze = true;
     }
 }
 
-void maze_stop_thd(void)
+void stop_maze_navigation_thd(void)
 {
-    if (is_navigating_maze) {
-        maze_resume_thd();
-        chThdTerminate(ptr_maze_thd);
-        chThdWait(ptr_maze_thd);
+    if(is_navigating_maze)
+    {
+        resume_maze_navigation_thd();
+        chThdTerminate(ptr_maze_navigation_thd);
+        chThdWait(ptr_maze_navigation_thd);
+        maze_navigation_paused = false;
         is_navigating_maze = false;
-        is_paused = false;
-
-        stop_move();
     }
 }
 
-void maze_pause_thd(void)
+void pause_maze_navigation_thd(void)
 {
-    if (is_navigating_maze){
-        is_paused = true;
-        stop_move();
-    }
+    if(is_navigating_maze)
+        maze_navigation_paused = true;
 }
 
-void maze_resume_thd(void)
+void resume_maze_navigation_thd(void)
 {
     chSysLock();
-    if (is_navigating_maze && is_paused){
-        chSchWakeupS(ptr_maze_thd, CH_STATE_READY);
-        is_paused = false;
+    if(maze_navigation_paused && is_navigating_maze){
+        chSchWakeupS(ptr_maze_navigation_thd, CH_STATE_READY);
+        maze_navigation_paused = false;
     }
     chSysUnlock();
 }
@@ -270,9 +197,104 @@ bool maze_get_state(void)
     return is_navigating_maze;
 }
 
+void reset_maze(void)
+{
+    exited_maze = false;
+    optimized_maze = false;
+    navigate_optimized_path = false;
+    memset(saved_actions, 0, sizeof(saved_actions));
+    pause_maze_navigation_thd();
+    pause_link_navigation_thd();
+    stop_move();
+}
+
 void select_optimized_path(void)
 {
     if(!is_navigating_maze && exited_maze){
         navigate_optimized_path = true;
     }
+}
+
+static THD_WORKING_AREA(wa_link_navigation_thd, 1024);
+static THD_FUNCTION(link_navigation_thd, arg)
+{
+    chRegSetThreadName(__FUNCTION__);
+	(void)arg;
+
+    systime_t time;
+    int delta_speed = 0;
+
+    while(!chThdShouldTerminateX())
+    {
+        //Thread Sleep
+        chSysLock();
+        if(link_navigation_paused)
+            chSchGoSleepS(CH_STATE_SUSPENDED);
+        chSysUnlock();
+        //Thread loop function
+        time = chVTGetSystemTime();
+
+        delta_speed = pid_regulator(get_ir_delta(IR6), WALL_TARGET);
+        if(fabs(delta_speed) < CORRECTION_THRESHOLD)
+            delta_speed = 0;
+        set_lr_speed(get_current_speed() + delta_speed,
+                     get_current_speed() - delta_speed);
+        //Thread exit condition
+        if(get_ir_delta(IR6) < JUNCTION_THRESHOLD){
+            junction_detected = true;
+            break;
+        }
+
+        //Thread refresh rate
+        chThdSleepUntilWindowed(time, time + MS2ST(LINK_NAVIGATION_PERIOD));
+    }
+
+    is_navigating_link = false;
+    stop_move();
+    chThdExit(0);
+}
+
+void create_link_navigation_thd(void)
+{
+    if(!is_navigating_link)
+    {
+        ptr_link_navigation_thd = chThdCreateStatic(wa_link_navigation_thd,
+            sizeof(wa_link_navigation_thd), NORMALPRIO, link_navigation_thd,
+            NULL);
+        is_navigating_link = true;
+    }
+}
+
+void stop_link_navigation_thd(void)
+{
+    if(is_navigating_link)
+    {
+        resume_link_navigation_thd();
+        chThdTerminate(ptr_link_navigation_thd);
+        chThdWait(ptr_link_navigation_thd);
+        stop_move();
+        link_navigation_paused = false;
+        is_navigating_link = false;
+    }
+}
+
+void pause_link_navigation_thd(void)
+{
+    if(is_navigating_link)
+        link_navigation_paused = true;
+}
+
+void resume_link_navigation_thd(void)
+{
+    chSysLock();
+    if(link_navigation_paused && is_navigating_link){
+        chSchWakeupS(ptr_link_navigation_thd, CH_STATE_READY);
+        link_navigation_paused = false;
+    }
+    chSysUnlock();
+}
+
+bool link_get_state(void)
+{
+    return is_navigating_link;
 }

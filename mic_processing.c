@@ -209,6 +209,9 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
      */
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
+	
+	if(is_paused && is_recording){
+
 
 	//loop to fill the buffers
 	for(uint16_t i = 0 ; i < num_samples ; i+=4){
@@ -262,6 +265,7 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
 
 		mic_remote(micLeft_output);
 	}
+	}
 }
 
 /*===========================================================================*/
@@ -276,11 +280,13 @@ static THD_FUNCTION(thd_mic_processing, arg){
 	systime_t time;
 
 	while(!chThdShouldTerminateX()){
+		//Thread Sleep
 		chSysLock();
 		if (is_paused){
 			chSchGoSleepS(CH_STATE_SUSPENDED);
 		}
 		chSysUnlock();
+		//Thread loop function
 		time = chVTGetSystemTime();
 		mic_start(&process_audio_data);
 		chThdSleepUntilWindowed(time, time + MS2ST(MIC_THD_PERIOD));

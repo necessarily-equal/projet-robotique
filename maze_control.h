@@ -10,48 +10,28 @@
 /*  External declarations                                                    */
 /*===========================================================================*/
 
-/**
- * @brief 
- * 
- */
-void maze_reset(void);
+void create_maze_navigation_thd(void);
 
-/**
- * @brief 
- * 
- */
-void maze_create_thd(void);
+void stop_maze_navigation_thd(void);
 
-/**
- * @brief 
- * 
- */
-void maze_stop_thd(void);
+void pause_maze_navigation_thd(void);
 
-/**
- * @brief 
- * 
- */
-void maze_pause_thd(void);
+void resume_maze_navigation_thd(void);
 
-/**
- * @brief 
- * 
- */
-void maze_resume_thd(void);
-
-/**
- * @brief 
- * 
- * @return true 
- * @return false 
- */
 bool maze_get_state(void);
 
-/**
- * @brief 
- * 
- */
+void reset_maze(void);
+
 void select_optimized_path(void);
+
+void create_link_navigation_thd(void);
+
+void stop_link_navigation_thd(void);
+
+void pause_link_navigation_thd(void);
+
+void resume_link_navigation_thd(void);
+
+bool link_get_state(void);
 
 #endif /* _MAZE_CONTROL_H_ */
