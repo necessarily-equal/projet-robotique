@@ -36,3 +36,22 @@ void action_queue_push(action_t action);
 // Returns the first action of the queue and removes it from the queue.
 // If the queue is empty, returns ACTION_VOID
 action_t action_queue_pop(void);
+
+/*
+ * A list of saved actions
+ * The list is always null-terminated (ACTION_VOID-terminated) and is of size (SAVED_PATH_SIZE+1)
+ * saved_path_push is well-behaved in case the list is already full.
+ */
+
+#define SAVED_PATH_SIZE (2<<10)
+// delete the saved path so that it is possible to build a new one using saved_path_push.
+// (you don't need to call that on first start)
+void reset_saved_path(void);
+// append an action to the list
+// returns true on success
+bool saved_path_push(action_t action);
+// returns a pointer to the saved path
+const action_t *get_saved_path(void);
+// returns the saved path, simplified
+// `out` must point to a buffer that must be at least (SAVED_PATH_SIZE+1) big.
+void get_simplified_saved_path(action_t *out);
