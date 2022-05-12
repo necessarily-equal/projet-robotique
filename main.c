@@ -65,6 +65,7 @@ static void init_all(void){
     create_mic_selector_thd();
 
     motors_init();
+    create_motor_thd();
     set_default_speed();
     sensors_init();
     chThdSleepMilliseconds(1000);
@@ -82,6 +83,7 @@ int main(void)
     init_all();
 
     while(true){
+        /*
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
         chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());
         chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
@@ -95,6 +97,7 @@ int main(void)
         chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR7));
         chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR8));
         chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
+        */
         chThdSleepMilliseconds(MAIN_PERIOD);
     }
 }

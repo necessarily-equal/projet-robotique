@@ -138,7 +138,7 @@ bool detect_dead_end(void)
 
 void move_to_junction_center(void)
 {
-    move(WALL_DISTANCE, FORWARD);
+    move(WALL_DISTANCE/20, FORWARD);
 }
 
 /*===========================================================================*/

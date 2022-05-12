@@ -17,6 +17,9 @@
 // e-puck 2 main processor headers
 #include <motors.h>
 
+#include <chprintf.h>
+#include <communication.h>
+
 // Module headers
 #include <move_command.h>
 
@@ -28,7 +31,7 @@
 #define PI                  3.1415926536f
 #define WHEEL_SEPARATION    5.35f   // [cm]
 #define WHEEL_PERIMETER     13      // [cm]
-#define EPUCK_PERIMETER     (PI * WHEEL_SEPARATION)
+#define EPUCK_PERIMETER     (PI*WHEEL_SEPARATION)
 #define U_TURN              EPUCK_PERIMETER/2
 
 //Speed
@@ -40,6 +43,7 @@
 //Steppers constants
 #define WHEEL_TURN_STEPS    1000    //Number of steps for one turn
 #define ADJUSTED_90DEG_TURN 3.8     // Adjusted value based on experiments
+#define ADJUSTED_U_TURN		(EPUCK_PERIMETER/2)*0.98075 // Adjusted value
 
 #define MOTOR_THD_PERIOD	100
 
@@ -54,20 +58,17 @@ static bool motor_thd_paused = false;
 
 static bool is_moving = false;
 
-static int32_t final_l_pos = 0;
-static int32_t final_r_pos = 0;
+static int32_t l_pos_target = 0;
+static int32_t r_pos_target = 0;
 
 static direction_t current_direction = FORWARD;
+static bool rotation_enabled = false;
 
 /*===========================================================================*/
 /* Module thread pointers                                                    */
 /*===========================================================================*/
 
 static thread_t *ptr_motor_thd = NULL;
-
-/*===========================================================================*/
-/* Module local functions.                                                   */
-/*===========================================================================*/
 
 /*===========================================================================*/
 /* Module threads.                                                           */
@@ -94,7 +95,24 @@ static THD_FUNCTION(motor_thd, arg)
 		}
 		chSysUnlock();
 
+		l_pos=current_direction * left_motor_get_pos();
+		r_pos=current_direction * right_motor_get_pos();
 
+		chprintf((BaseSequentialStream *)&SD3, "left pos\r\n");
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", l_pos);
+
+		chprintf((BaseSequentialStream *)&SD3, "right pos\r\n");
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", r_pos);
+		if(l_pos>l_pos_target && r_pos>r_pos_target && !rotation_enabled) {
+			left_motor_set_speed(NULL_SPEED);
+			right_motor_set_speed(NULL_SPEED);
+			is_moving = false;
+		}
+		else if(l_pos>l_pos_target && r_pos<r_pos_target && rotation_enabled) {
+			left_motor_set_speed(NULL_SPEED);
+			right_motor_set_speed(NULL_SPEED);
+			is_moving = false;
+		}
 
 		//Thread refresh rate
 		time = chVTGetSystemTime();
@@ -118,10 +136,10 @@ void create_motor_thd(void)
 	}
 }
 
-void stop_mic_selector_thd(void)
+void stop_motor_thd(void)
 {
 	if (motor_thd_created){
-		resume_mic_selector_thd();
+		resume_motor_thd();
 		chThdTerminate(ptr_motor_thd);
 		chThdWait(ptr_motor_thd);
 		motor_thd_created = false;
@@ -129,14 +147,14 @@ void stop_mic_selector_thd(void)
 	}
 }
 
-void pause_mic_selector_thd(void)
+void pause_motor_thd(void)
 {
 	if(motor_thd_created){
 		motor_thd_paused = true;
 	}
 }
 
-void resume_mic_selector_thd(void)
+void resume_motor_thd(void)
 {
 	chSysLock();
 	if(motor_thd_created && motor_thd_paused){
@@ -146,99 +164,54 @@ void resume_mic_selector_thd(void)
 	chSysUnlock();
 }
 
-void motor_is_moving(void)
+bool motor_is_moving(void)
 {
 	return is_moving;
 }
 
 void right_angle_turn(direction_t direction)
 {
-
+	turn(ADJUSTED_90DEG_TURN, direction);
 }
 
 void u_turn(void)
 {
-
+	turn(ADJUSTED_U_TURN, COUNTERCLOCKWISE);
 }
 
-void turn(float position, direction_t direction)
+void turn(float position, rotation_t direction)
 {
-	left_motor_set_pos(0);
-	right_motor_set_pos(0);
-	final_l_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
-	final_r_pos=-(position * WHEEL_PERIMETER / WHEEL_PERIMETER);
-	left_motor_set_speed(direction*TURNING_SPEED);
-	right_motor_set_speed(-(direction*TURNING_SPEED));
+	if (!is_moving) {
+		left_motor_set_pos(0);
+		right_motor_set_pos(0);
+		l_pos_target=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
+		r_pos_target=-(position * WHEEL_PERIMETER / WHEEL_PERIMETER);
+
+		left_motor_set_speed(direction*TURNING_SPEED);
+		right_motor_set_speed(-(direction*TURNING_SPEED));
+		if(direction == CLOCKWISE)
+			current_direction = FORWARD;
+		else
+			current_direction = BACKWARD;
+		rotation_enabled = true;
+		is_moving = true;
+	}
 }
 
 void move(float position, direction_t direction)
 {
+	if (!is_moving) {
+		left_motor_set_pos(0);
+		right_motor_set_pos(0);
+		l_pos_target=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
+		r_pos_target=position * WHEEL_PERIMETER / WHEEL_PERIMETER;
 
-}
-
-
-
-
-void right_angle_turn(direction_t direction){
-    turn(ADJUSTED_90DEG_TURN, direction);
-}
-
-void u_turn(void){
-    turn(U_TURN, COUNTERCLOCKWISE);
-}
-
-void turn(float position, rotation_t direction){
-    int32_t final_l_pos=0;
-	int32_t final_r_pos=0;
-	int32_t l_pos=0;
-	int32_t r_pos=0;
-
-    left_motor_set_pos(0);
-	right_motor_set_pos(0);
-
-    final_l_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
-	final_r_pos=-(position * WHEEL_PERIMETER / WHEEL_PERIMETER);
-
-    left_motor_set_speed(direction*TURNING_SPEED);
-	right_motor_set_speed(-(direction*TURNING_SPEED));
-
-    l_pos=direction*left_motor_get_pos();
-	r_pos=direction*right_motor_get_pos();
-
-	while(l_pos<final_l_pos || r_pos>final_r_pos ){
-		l_pos=direction*left_motor_get_pos();
-		r_pos=direction*right_motor_get_pos();
+		left_motor_set_speed(direction*TURNING_SPEED);
+		right_motor_set_speed(direction*TURNING_SPEED);
+		rotation_enabled = false;
+		current_direction = direction;
+		is_moving = true;
 	}
-
-	left_motor_set_speed(NULL_SPEED);
-	right_motor_set_speed(NULL_SPEED);
-}
-
-void move(float position, direction_t direction){
-    int32_t final_l_pos=0;
-	int32_t final_r_pos=0;
-	int32_t l_pos=0;
-	int32_t r_pos=0;
-
-    left_motor_set_pos(0);
-	right_motor_set_pos(0);
-
-    final_l_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
-	final_r_pos=position * WHEEL_PERIMETER / WHEEL_PERIMETER;
-
-    left_motor_set_speed(direction*DEFAULT_SPEED);
-	right_motor_set_speed(direction*DEFAULT_SPEED);
-
-    l_pos=direction*left_motor_get_pos();
-	r_pos=direction*right_motor_get_pos();
-
-	while(l_pos<final_l_pos || r_pos<final_r_pos ){
-		l_pos=direction*left_motor_get_pos();
-		r_pos=direction*right_motor_get_pos();
-	}
-
-	left_motor_set_speed(NULL_SPEED);
-	right_motor_set_speed(NULL_SPEED);
 }
 
 void set_default_speed(void){

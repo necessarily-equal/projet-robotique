@@ -26,15 +26,16 @@ typedef enum {
 /*===========================================================================*/
 
 void create_motor_thd(void);
-void stop_mic_selector_thd(void);
-void pause_mic_selector_thd(void);
-void resume_mic_selector_thd(void);
+void stop_motor_thd(void);
+void pause_motor_thd(void);
+void resume_motor_thd(void);
 
-bool motor_is_moving(void); //Return false until position is reached
+bool motor_is_moving(void);
 
 void right_angle_turn(direction_t direction);
 void u_turn(void);
-void turn(float position, direction_t direction);
+void turn(float position, rotation_t direction);
+
 void move(float position, direction_t direction);
 
 void set_default_speed(void);
