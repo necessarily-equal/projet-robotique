@@ -6,12 +6,16 @@
 PROJECT = PuckPlayer
 
 #Define path to the e-puck2_main-processor folder
-GLOBAL_PATH = ../../lib/e-puck2_main-processor
+GLOBAL_PATH = ../lib/e-puck2_main-processor
+#GLOBAL_PATH = ../../lib/e-puck2_main-processor
 
 #Source files to include
 CSRC += ./main.c \
-		./distance.c \
-		./player.c \
+		./arm_fft.c \
+		./mic_processing.c \
+		./move_command.c \
+		./ir_sensors.c \
+		./wall_follower.c \
 
 #Header folders to include
 INCDIR += 
