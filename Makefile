@@ -14,6 +14,7 @@ CSRC += ./main.c \
 		./player.c \
 		./lfr_regulator.c \
 		./image_processing.c \
+		./action_queue.c
 
 #Header folders to include
 INCDIR += 
