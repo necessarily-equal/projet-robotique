@@ -23,7 +23,8 @@
 // Module headers
 #include <main.h>
 #include <ir_sensors.h>
-#include <maze_control.h>
+#include <wall_follower.h>
+//#include <maze_control.h>
 #include <mic_processing.h>
 #include <move_command.h>
 #include <communication.h>
@@ -63,8 +64,9 @@ static void init_all(void){
 
     motors_init();
     sensors_init();
+    chThdSleepMilliseconds(5000);
 
-    create_link_navigation_thd();
+    create_wall_follower_thd();
 }
 
 /*===========================================================================*/
@@ -76,7 +78,6 @@ int main(void)
     init_all();
 
     set_default_speed();
-
 
     while(true){
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");

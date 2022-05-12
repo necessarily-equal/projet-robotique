@@ -211,8 +211,6 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
 	static uint8_t mustSend = 0;
 	
 	if(is_paused && is_recording){
-
-
 	//loop to fill the buffers
 	for(uint16_t i = 0 ; i < num_samples ; i+=4){
 		//construct an array of complex numbers. Put 0 to the imaginary part
@@ -299,6 +297,9 @@ static THD_FUNCTION(thd_mic_processing, arg){
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
+
+
+
 
 /**
  * @brief 
