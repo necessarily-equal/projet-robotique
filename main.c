@@ -83,6 +83,12 @@ int main(void)
     init_all();
 
     while(true){
+        u_turn();
+        chThdSleepMilliseconds(1000);
+        move(10, FORWARD);
+        chThdSleepMilliseconds(2000);
+        u_turn();
+
         /*
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
         chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());

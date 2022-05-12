@@ -11,14 +11,9 @@
 // ChibiOS headers
 #include "hal.h"
 #include "ch.h"
-#include "memory_protection.h"
-#include "msgbus/messagebus.h"
 
 // e-puck 2 main processor headers
 #include <motors.h>
-
-#include <chprintf.h>
-#include <communication.h>
 
 // Module headers
 #include <move_command.h>
@@ -94,15 +89,10 @@ static THD_FUNCTION(motor_thd, arg)
 			chSchGoSleepS(CH_STATE_SUSPENDED);
 		}
 		chSysUnlock();
-
+		//Thread body
 		l_pos=current_direction * left_motor_get_pos();
 		r_pos=current_direction * right_motor_get_pos();
 
-		chprintf((BaseSequentialStream *)&SD3, "left pos\r\n");
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", l_pos);
-
-		chprintf((BaseSequentialStream *)&SD3, "right pos\r\n");
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", r_pos);
 		if(l_pos>l_pos_target && r_pos>r_pos_target && !rotation_enabled) {
 			left_motor_set_speed(NULL_SPEED);
 			right_motor_set_speed(NULL_SPEED);
@@ -142,6 +132,8 @@ void stop_motor_thd(void)
 		resume_motor_thd();
 		chThdTerminate(ptr_motor_thd);
 		chThdWait(ptr_motor_thd);
+		left_motor_set_speed(NULL_SPEED);
+		right_motor_set_speed(NULL_SPEED);
 		motor_thd_created = false;
 		motor_thd_paused = false;
 	}
