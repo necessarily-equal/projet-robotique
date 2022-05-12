@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <ch.h>
 
@@ -138,4 +139,35 @@ action_t action_queue_pop(void) {
 
 	chMtxUnlock(&action_queue_mutex);
 	return action;
+}
+
+
+/*
+ * Saved last path
+ */
+
+static action_t saved_path[SAVED_PATH_SIZE+1];
+static unsigned saved_path_size;
+
+void reset_saved_path(void) {
+	memset(saved_path, 0, sizeof(saved_path));
+	saved_path_size = 0;
+}
+
+bool saved_path_push(action_t action) {
+	if (saved_path_size < SAVED_PATH_SIZE) {
+		saved_path[saved_path_size++] = action;
+		saved_path[saved_path_size] = ACTION_VOID;
+		return true;
+	}
+	return false;
+}
+
+const action_t *get_saved_path(void) {
+	return saved_path;
+}
+
+void get_simplified_saved_path(action_t *out) {
+	strcpy(out, saved_path);
+	simplify_action_list(out);
 }
