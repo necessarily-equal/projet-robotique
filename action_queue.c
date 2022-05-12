@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include <ch.h>
+
 #include "action_queue.h"
 
 //#define	ASSERT_UNREACHABLE() printf("unreachable, %s at line %i\n", __FUNCTION__, __LINE__)
@@ -75,14 +77,61 @@ void simplify_action_list(action_t *const actions) {
 	while(simplify_once(actions));
 }
 
+
 /*
-int main(int argc, char **argv) {
-	if (argc <= 1) {
-		printf("missing argument");
-		return 1;
+ * Event Queue
+ */
+
+#define ACTION_QUEUE_SIZE (1<<5)
+#define ACTION_QUEUE_MASK (ACTION_QUEUE_SIZE - 1)
+
+MUTEX_DECL(action_queue_mutex);
+
+unsigned action_queue_front;
+unsigned action_queue_back;
+action_t action_queue[ACTION_QUEUE_SIZE];
+
+bool action_queue_empty(void) {
+	chMtxLock(&action_queue_mutex);
+	bool res = action_queue_front == action_queue_back;
+	chMtxUnlock(&action_queue_mutex);
+	return res;
+}
+
+bool action_queue_full(void) {
+	chMtxLock(&action_queue_mutex);
+	bool res = ((action_queue_back+1) & ACTION_QUEUE_MASK) == action_queue_front;
+	chMtxUnlock(&action_queue_mutex);
+	return res;
+}
+
+void action_queue_push(action_t action) {
+	chMtxLock(&action_queue_mutex);
+	if (((action_queue_back+1) & ACTION_QUEUE_MASK) == action_queue_front) {
+		// the queue is already full
+		chMtxUnlock(&action_queue_mutex);
+		return;
 	}
 
-	simplify(argv[1]);
-	printf("result: %s\n", argv[1]);
+	action_queue[action_queue_back] = action;
+	action_queue_back += 1;
+	action_queue_back &= ACTION_QUEUE_MASK;
+
+	chMtxUnlock(&action_queue_mutex);
 }
-*/
+
+action_t action_queue_pop(void) {
+	chMtxLock(&action_queue_mutex);
+	if (action_queue_front == action_queue_back) {
+		// we have nothing to pop
+		chMtxUnlock(&action_queue_mutex);
+		return ACTION_VOID;
+	}
+
+	action_t action = action_queue[action_queue_front];
+	action_queue_front += 1;
+	action_queue_front &= ACTION_QUEUE_MASK;
+
+	chMtxUnlock(&action_queue_mutex);
+	return action;
+}
