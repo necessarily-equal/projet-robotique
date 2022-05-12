@@ -8,6 +8,10 @@
 //#define	ASSERT_UNREACHABLE() printf("unreachable, %s at line %i\n", __FUNCTION__, __LINE__)
 #define	ASSERT_UNREACHABLE()
 
+/*
+ * Simplify action queue
+ */
+
 static int to_int(action_t direction) {
 	if (direction == ACTION_BACK) return 0;
 	if (direction == ACTION_STRAIGHT) return 1;
@@ -85,11 +89,11 @@ void simplify_action_list(action_t *const actions) {
 #define ACTION_QUEUE_SIZE (1<<5)
 #define ACTION_QUEUE_MASK (ACTION_QUEUE_SIZE - 1)
 
-MUTEX_DECL(action_queue_mutex);
+static MUTEX_DECL(action_queue_mutex);
 
-unsigned action_queue_front;
-unsigned action_queue_back;
-action_t action_queue[ACTION_QUEUE_SIZE];
+static unsigned action_queue_front;
+static unsigned action_queue_back;
+static action_t action_queue[ACTION_QUEUE_SIZE];
 
 bool action_queue_empty(void) {
 	chMtxLock(&action_queue_mutex);
