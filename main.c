@@ -1,78 +1,99 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+/**
+ * @file main.c
+ * @brief 
+ */
+
+// ChibiOS headers
 
 #include "ch.h"
 #include "hal.h"
 #include "memory_protection.h"
-#include <usbcfg.h>
-#include <main.h>
-#include <motors.h>
-#include <camera/po8030.h>
 #include <chprintf.h>
+#include <usbcfg.h>
+#include <motors.h>
 
-#include <lfr_regulator.h>
-#include <image_processing.h>
-#include <distance.h>
-#include <player.h>
+// e-puck 2 main processor headers
 
-void SendUint8ToComputer(uint8_t* data, uint16_t size) 
-{
-    chSequentialStreamWrite((BaseSequentialStream *)&SD3, (uint8_t*)"START", 5);
-    chSequentialStreamWrite((BaseSequentialStream *)&SD3, (uint8_t*)&size, sizeof(uint16_t));
-    chSequentialStreamWrite((BaseSequentialStream *)&SD3, (uint8_t*)data, size);
-}
+#include <camera/po8030.h>
+#include "camera/dcmi_camera.h"
 
-static void serial_start(void)
-{
-    static SerialConfig ser_cfg = {
-        115200,
-        0,
-        0,
-        0,
-    };
+#include "selector.h"
 
-    sdStart(&SD3, &ser_cfg); // UART3.
-}
 
-int main(void)
-{
+// Module headers
+#include <main.h>
+#include <ir_sensors.h>
+#include <wall_follower.h>
+//#include <maze_control.h>
+#include <mic_processing.h>
+#include <move_command.h>
+#include <communication.h>
+//#include <lfr_regulator.h>
+//#include <image_processing.h>
 
+//#include <operation_mode.h>
+
+//#include <distance.h>
+//#include <player.h>
+
+/*===========================================================================*/
+/* Module constants                                                          */
+/*===========================================================================*/
+
+#define MAIN_PERIOD     100 // in milliseconds
+
+/*===========================================================================*/
+/* Bus related declarations.                                                 */
+/*===========================================================================*/
+/*
+messagebus_t bus;
+MUTEX_DECL(bus_lock);
+CONDVAR_DECL(bus_condvar);
+*/
+/*===========================================================================*/
+/* Module local functions.                                                   */
+/*===========================================================================*/
+
+static void init_all(void){
     halInit();
     chSysInit();
     mpu_init();
 
-    //starts the serial communication
-    serial_start();
-    //start the USB communication
-    usb_start();
-    //starts the camera
-    dcmi_start();
-    po8030_start();
-    //inits the motors
+    com_serial_start();
+//  usb_start();
+
     motors_init();
-/*
-    //stars the threads for the lfr regulator and the processing of the image
-    lfr_regulator_start();
-    image_processing_start();
-*/
-    dist_init();
-    player_init();
+    sensors_init();
+    chThdSleepMilliseconds(5000);
 
-    uint16_t freq = 31;
-    while(1) {
-        if (dist_obstacle_is_close()) {
-            freq = 31;
-            //set_led(4, 1);
-        } else {
-            freq *= 1.1f;
-            if (freq > 4978) freq = 31;
-            //set_led(4, 0);
-        }
+    create_wall_follower_thd();
+}
 
-        player_set_frequency(freq);
-        chThdSleepMilliseconds(100);
+/*===========================================================================*/
+/* Main function.                                                            */
+/*===========================================================================*/
+
+int main(void)
+{
+    init_all();
+
+    set_default_speed();
+
+    while(true){
+        chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
+        chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());
+        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
+        chprintf((BaseSequentialStream *)&SD3, "IR PROXIMITY\r\n");
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR1));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR2));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR3));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR4));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR5));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR6));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR7));
+        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR8));
+        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
+        chThdSleepMilliseconds(MAIN_PERIOD);
     }
 }
 
