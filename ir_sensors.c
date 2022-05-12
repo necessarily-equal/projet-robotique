@@ -102,7 +102,7 @@ static THD_FUNCTION(ir_thd, arg)
 static void ir_create_thd(void)
 {
     ptr_ir_thd = chThdCreateStatic(wa_ir_thd, sizeof(wa_ir_thd),
-	                                NORMALPRIO, ir_thd, NULL);
+	                               NORMALPRIO, ir_thd, NULL);
 }
 
 /*===========================================================================*/

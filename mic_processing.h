@@ -27,27 +27,10 @@ typedef enum{
 /*  External declarations                                                 */
 /*========================================================================*/
 
-/**
- * @brief 				Init the microphones' thread
- */
-void mic_create_thd(void);
+void create_mic_selector_thd(void);
 
-/**
- * @brief 
- * 
- */
-void mic_stop_thd(void);
-
-/**
- * @brief 
- * 
- */
-void mic_pause_thd(void);
-
-/**
- * @brief 
- * 
- */
-void mic_resume_thd(void);
+void stop_mic_selector_thd(void);
+void pause_mic_selector_thd(void);
+void resume_mic_selector_thd(void);
 
 #endif /* _MOD_AUDIO_PROCESSING_H_ */

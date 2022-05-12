@@ -12,7 +12,7 @@
 
 // e-puck 2 main processor headers
 #include <audio/microphone.h>
-#include "leds.h"
+#include <selector.h>
 
 // ARM headers
 #include <arm_math.h>
@@ -26,7 +26,7 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 
-#define MIC_THD_PERIOD      	100     // Refresh @ 10 Hz.
+#define MIC_SELECTOR_PERIOD		1000	// [ms]
 
 //FFT constants
 #define MIN_VALUE_THRESHOLD		35000
@@ -83,17 +83,20 @@ static float micLeft_output[FFT_SIZE];
 //static float micBack_output[FFT_SIZE];
 
 //Default command state
-static command_t status=WAIT_CMD;
+static command_t status = WAIT_CMD;
 
 //Thread state
-static bool is_recording = false;
-static bool is_paused = false;
+static bool selector_thd_active = false;
+static bool selector_thd_paused = false;
+
+//Mic disable flag
+static bool disable_mic = true;	// disable callback function
 
 /*===========================================================================*/
 /* Module thread pointers                                                    */
 /*===========================================================================*/
 
-static thread_t *ptr_mic_thd = NULL;
+static thread_t *ptr_mic_selector_thd = NULL;
 
 /*===========================================================================*/
 /* Module local functions.                                                   */
@@ -209,59 +212,59 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
 	
-	if(is_paused && is_recording){
-	//loop to fill the buffers
-	for(uint16_t i = 0 ; i < num_samples ; i+=4){
-		//construct an array of complex numbers. Put 0 to the imaginary part
-		//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT];
-		micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
-		//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
-		//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];
+	if(!disable_mic){
+		//loop to fill the buffers
+		for(uint16_t i = 0 ; i < num_samples ; i+=4){
+			//construct an array of complex numbers. Put 0 to the imaginary part
+			//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT];
+			micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
+			//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
+			//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];
 
-		nb_samples++;
+			nb_samples++;
 
-		//micRight_cmplx_input[nb_samples] = 0;
-		micLeft_cmplx_input[nb_samples] = 0;
-		//micBack_cmplx_input[nb_samples] = 0;
-		//micFront_cmplx_input[nb_samples] = 0;
+			//micRight_cmplx_input[nb_samples] = 0;
+			micLeft_cmplx_input[nb_samples] = 0;
+			//micBack_cmplx_input[nb_samples] = 0;
+			//micFront_cmplx_input[nb_samples] = 0;
 
-		//nb_samples++;
+			//nb_samples++;
 
-		//stop when buffer is full
-		if(nb_samples >= (2 * FFT_SIZE)){
-			break;
+			//stop when buffer is full
+			if(nb_samples >= (2 * FFT_SIZE)){
+				break;
+			}
 		}
-	}
 
-	if(nb_samples >= (2 * FFT_SIZE)){
-		/*	FFT proccessing
-		*
-		*	This FFT function stores the results in the input buffer given.
-		*	This is an "In Place" function. 
-		*/
+		if(nb_samples >= (2 * FFT_SIZE)){
+			/*	FFT proccessing
+			*
+			*	This FFT function stores the results in the input buffer given.
+			*	This is an "In Place" function. 
+			*/
 
-		//doFFT_optimized(FFT_SIZE, micRight_cmplx_input);
-		doFFT_optimized(FFT_SIZE, micLeft_cmplx_input, micLeft_output);
-		//doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
-		//doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
+			//doFFT_optimized(FFT_SIZE, micRight_cmplx_input);
+			doFFT_optimized(FFT_SIZE, micLeft_cmplx_input, micLeft_output);
+			//doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
+			//doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
 
-		/*	Magnitude processing
-		*
-		*	Computes the magnitude of the complex numbers and
-		*	stores them in a buffer of FFT_SIZE because it only contains
-		*	real numbers.
-		*
-		*/
-		//arm_cmplx_mag_f32(micRight_cmplx_input, micRight_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micLeft_cmplx_input, micLeft_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micFront_cmplx_input, micFront_output, FFT_SIZE);
-		//arm_cmplx_mag_f32(micBack_cmplx_input, micBack_output, FFT_SIZE);
+			/*	Magnitude processing
+			*
+			*	Computes the magnitude of the complex numbers and
+			*	stores them in a buffer of FFT_SIZE because it only contains
+			*	real numbers.
+			*
+			*/
+			//arm_cmplx_mag_f32(micRight_cmplx_input, micRight_output, FFT_SIZE);
+			//arm_cmplx_mag_f32(micLeft_cmplx_input, micLeft_output, FFT_SIZE);
+			//arm_cmplx_mag_f32(micFront_cmplx_input, micFront_output, FFT_SIZE);
+			//arm_cmplx_mag_f32(micBack_cmplx_input, micBack_output, FFT_SIZE);
 
-		nb_samples = 0;
-		mustSend++;
+			nb_samples = 0;
+			mustSend++;
 
-		mic_remote(micLeft_output);
-	}
+			mic_remote(micLeft_output);
+		}
 	}
 }
 
@@ -269,27 +272,35 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
 /* Module threads.                                                           */
 /*===========================================================================*/
 
-static THD_WORKING_AREA(wa_mic_processing, 1024);
-static THD_FUNCTION(thd_mic_processing, arg){
+static THD_WORKING_AREA(wa_mic_selector_thd, 128);
+static THD_FUNCTION(thd_mic_selector, arg)
+{
 	chRegSetThreadName(__FUNCTION__);
 	(void) arg;
 
 	systime_t time;
 
+	mic_start(&process_audio_data);
+
 	while(!chThdShouldTerminateX()){
 		//Thread Sleep
 		chSysLock();
-		if (is_paused){
+		if (selector_thd_paused){
 			chSchGoSleepS(CH_STATE_SUSPENDED);
 		}
 		chSysUnlock();
-		//Thread loop function
+		//Thread function
+		if(get_selector() & (1<<3))
+			disable_mic = true;
+		else
+			disable_mic = false;
+
+		//Thread refresh rate
 		time = chVTGetSystemTime();
-		mic_start(&process_audio_data);
-		chThdSleepUntilWindowed(time, time + MS2ST(MIC_THD_PERIOD));
+		chThdSleepUntilWindowed(time, time + MS2ST(MIC_SELECTOR_PERIOD));
 	}
 
-	is_recording = false;
+	selector_thd_active = false;
 	chThdExit(0);
 }
 
@@ -297,54 +308,39 @@ static THD_FUNCTION(thd_mic_processing, arg){
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
-
-
-
-/**
- * @brief 
- * 
- */
-void mic_create_thd(void){
-	if(!is_recording){
-		ptr_mic_thd = chThdCreateStatic(wa_mic_processing, sizeof(wa_mic_processing),
-                      NORMALPRIO, thd_mic_processing, NULL);
-		is_recording = true;
+void create_mic_selector_thd(void)
+{
+	if(!selector_thd_active){
+		ptr_mic_selector_thd = chThdCreateStatic(wa_mic_selector_thd,
+			sizeof(wa_mic_selector_thd), NORMALPRIO, thd_mic_selector, NULL);
+		selector_thd_active = true;
 	}
 }
 
-/**
- * @brief 
- * 
- */
-void mic_stop_thd(void){
-	if (is_recording){
-		mic_resume_thd();
-		chThdTerminate(ptr_mic_thd);
-		chThdWait(ptr_mic_thd);
-		is_recording = false;
-		is_paused = false;
+void stop_mic_selector_thd(void)
+{
+	if (selector_thd_active){
+		resume_mic_selector_thd();
+		chThdTerminate(ptr_mic_selector_thd);
+		chThdWait(ptr_mic_selector_thd);
+		selector_thd_active = false;
+		selector_thd_paused = false;
 	}
 }
 
-/**
- * @brief 
- * 
- */
-void mic_pause_thd(void){
-	if(is_recording){
-		is_paused = true;
+void pause_mic_selector_thd(void)
+{
+	if(selector_thd_active){
+		selector_thd_paused = true;
 	}
 }
 
-/**
- * @brief 
- * 
- */
-void mic_resume_thd(void){
+void resume_mic_selector_thd(void)
+{
 	chSysLock();
-	if(is_recording && is_paused){
-		chSchWakeupS(ptr_mic_thd, CH_STATE_READY);
-		is_paused = false;
+	if(selector_thd_active && selector_thd_paused){
+		chSchWakeupS(ptr_mic_selector_thd, CH_STATE_READY);
+		selector_thd_paused = false;
 	}
 	chSysUnlock();
 }

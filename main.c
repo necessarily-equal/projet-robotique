@@ -62,11 +62,15 @@ static void init_all(void){
     com_serial_start();
 //  usb_start();
 
+    create_mic_selector_thd();
+
     motors_init();
+    set_default_speed();
     sensors_init();
-    chThdSleepMilliseconds(5000);
+    chThdSleepMilliseconds(1000);
 
     create_wall_follower_thd();
+    create_junction_study_thd();
 }
 
 /*===========================================================================*/
@@ -76,8 +80,6 @@ static void init_all(void){
 int main(void)
 {
     init_all();
-
-    set_default_speed();
 
     while(true){
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
