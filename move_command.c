@@ -132,6 +132,7 @@ static THD_FUNCTION(motor_thd, arg)
 void create_motor_thd(void)
 {
 	if(!motor_thd_created){
+		motors_init();
 		ptr_motor_thd = chThdCreateStatic(wa_motor_thd,
 			sizeof(wa_motor_thd), NORMALPRIO, motor_thd, NULL);
 		motor_thd_created = true;
