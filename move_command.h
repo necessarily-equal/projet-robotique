@@ -7,6 +7,8 @@
 #ifndef _MOVE_COMMAND_H_
 #define _MOVE_COMMAND_H_
 
+#include <ch.h>
+
 /*===========================================================================*/
 /*  Module data structures and types                                         */
 /*===========================================================================*/
@@ -88,9 +90,9 @@ void stop_move(void);
 
 /**
  * @brief       This semaphore tells you when the motor is done moving
- *              usefull for chBSemWait(get_motor_sempahore_ptr());
+ *              useful for chBSemWait(get_motor_semaphore_ptr());
  * 
  * @return      binary_semaphore_t* 
  */
-binary_semaphore_t *get_motor_sempahore_ptr(void);
+binary_semaphore_t *get_motor_semaphore_ptr(void);
 #endif /* _MOVE_COMMAND_H_ */

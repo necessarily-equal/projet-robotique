@@ -46,7 +46,7 @@ void control_maze(void) {
 		if (current_action) {
 			saved_path_push(current_action);
 			dispatch_action(current_action);
-			chBSemWait(get_motor_sempahore_ptr());
+			chBSemWait(get_motor_semaphore_ptr());
 		}
 	}
 }
