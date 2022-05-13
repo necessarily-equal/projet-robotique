@@ -90,33 +90,31 @@ void simplify_action_list(action_t *const actions) {
 #define ACTION_QUEUE_SIZE (1<<8)
 #define ACTION_QUEUE_MASK (ACTION_QUEUE_SIZE - 1)
 
-static MUTEX_DECL(action_queue_mutex);
-
 static unsigned action_queue_front;
 static unsigned action_queue_back;
 static action_t action_queue[ACTION_QUEUE_SIZE];
 
 bool action_queue_empty(void) {
-	chMtxLock(&action_queue_mutex);
+	chSysLock();
 	bool res = action_queue_front == action_queue_back;
-	chMtxUnlock(&action_queue_mutex);
+	chSysUnlock();
 	return res;
 }
 
 bool action_queue_full(void) {
-	chMtxLock(&action_queue_mutex);
+	chSysLock();
 	bool res = ((action_queue_back+1) & ACTION_QUEUE_MASK) == action_queue_front;
-	chMtxUnlock(&action_queue_mutex);
+	chSysUnlock();
 	return res;
 }
 
 void action_queue_push(action_t action) {
 	if (!action) return;
 
-	chMtxLock(&action_queue_mutex);
+	chSysLock();
 	if (((action_queue_back+1) & ACTION_QUEUE_MASK) == action_queue_front) {
 		// the queue is already full
-		chMtxUnlock(&action_queue_mutex);
+		chSysUnlock();
 		return;
 	}
 
@@ -124,14 +122,14 @@ void action_queue_push(action_t action) {
 	action_queue_back += 1;
 	action_queue_back &= ACTION_QUEUE_MASK;
 
-	chMtxUnlock(&action_queue_mutex);
+	chSysUnlock();
 }
 
 action_t action_queue_pop(void) {
-	chMtxLock(&action_queue_mutex);
+	chSysLock();
 	if (action_queue_front == action_queue_back) {
 		// we have nothing to pop
-		chMtxUnlock(&action_queue_mutex);
+		chSysUnlock();
 		return ACTION_VOID;
 	}
 
@@ -139,7 +137,7 @@ action_t action_queue_pop(void) {
 	action_queue_front += 1;
 	action_queue_front &= ACTION_QUEUE_MASK;
 
-	chMtxUnlock(&action_queue_mutex);
+	chSysUnlock();
 	return action;
 }
 
