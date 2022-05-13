@@ -60,18 +60,17 @@ static void init_all(void){
     mpu_init();
 
     com_serial_start();
-//  usb_start();
+//  usb_start(); if not using bluetooth
 
     create_mic_selector_thd();
 
-    motors_init();
     create_motor_thd();
     set_default_speed();
     sensors_init();
     chThdSleepMilliseconds(1000);
 
-    create_wall_follower_thd();
-    create_junction_study_thd();
+    //create_wall_follower_thd();
+    //create_junction_study_thd();
 }
 
 /*===========================================================================*/
@@ -83,12 +82,6 @@ int main(void)
     init_all();
 
     while(true){
-        u_turn();
-        chThdSleepMilliseconds(1000);
-        move(10, FORWARD);
-        chThdSleepMilliseconds(2000);
-        u_turn();
-
         /*
         chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
         chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());
