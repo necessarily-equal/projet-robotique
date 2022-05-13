@@ -42,6 +42,8 @@
 
 #define MOTOR_THD_PERIOD	100
 
+#define MOTOR_DELAY			100
+
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
@@ -58,6 +60,12 @@ static int32_t r_pos_target = 0;
 
 static direction_t current_direction = FORWARD;
 static bool rotation_enabled = false;
+
+/*===========================================================================*/
+/* Semaphores.                                                               */
+/*===========================================================================*/
+
+static BSEMAPHORE_DECL(move_finished, TRUE);
 
 /*===========================================================================*/
 /* Module thread pointers                                                    */
@@ -97,11 +105,15 @@ static THD_FUNCTION(motor_thd, arg)
 			left_motor_set_speed(NULL_SPEED);
 			right_motor_set_speed(NULL_SPEED);
 			is_moving = false;
+			chThdSleepMilliseconds(MOTOR_DELAY);
+			chBSemSignal(&move_finished);
 		}
 		else if(l_pos>l_pos_target && r_pos<r_pos_target && rotation_enabled) {
 			left_motor_set_speed(NULL_SPEED);
 			right_motor_set_speed(NULL_SPEED);
 			is_moving = false;
+			chThdSleepMilliseconds(MOTOR_DELAY);
+			chBSemSignal(&move_finished);
 		}
 
 		//Thread refresh rate
@@ -248,3 +260,9 @@ void stop_move(void){
     left_motor_set_speed(NULL_SPEED);
 	right_motor_set_speed(NULL_SPEED);
 }
+
+binary_semaphore_t *get_motor_sempahore_ptr(void)
+{
+	return &move_finished;
+}
+
