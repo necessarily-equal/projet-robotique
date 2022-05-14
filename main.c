@@ -81,24 +81,7 @@ int main(void)
 {
     init_all();
 
-    while(true){
-        /*
-        chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
-        chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());
-        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
-        chprintf((BaseSequentialStream *)&SD3, "IR PROXIMITY\r\n");
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR1));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR2));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR3));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR4));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR5));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR6));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR7));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR8));
-        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
-        */
-        chThdSleepMilliseconds(MAIN_PERIOD);
-    }
+    control_maze();
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
