@@ -119,7 +119,7 @@ void mic_remote(float* data){
 
 	static action_t last_identified_frequencies[5] = {};
 	static size_t last_identified_frequencies_index = 0;
-	static const size_t last_identified_frequencies_len = sizeof(last_identified_frequencies) / sizeof(int16_t);
+	static const size_t last_identified_frequencies_len = sizeof(last_identified_frequencies) / sizeof(*last_identified_frequencies);
 
 	last_identified_frequencies[last_identified_frequencies_index++] = identify_frequency(max_norm_index);
 	last_identified_frequencies_index %= last_identified_frequencies_len;
@@ -232,10 +232,7 @@ static THD_FUNCTION(thd_mic_selector, arg)
 		}
 		chSysUnlock();
 		//Thread function
-		if(get_selector() & (1<<3))
-			disable_mic = true;
-		else
-			disable_mic = false;
+		disable_mic = !!(get_selector() & (1<<3));
 
 		//Thread refresh rate
 		time = chVTGetSystemTime();
