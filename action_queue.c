@@ -87,7 +87,7 @@ void simplify_action_list(action_t *const actions) {
  * Event Queue
  */
 
-#define ACTION_QUEUE_SIZE (1<<5)
+#define ACTION_QUEUE_SIZE (1<<8)
 #define ACTION_QUEUE_MASK (ACTION_QUEUE_SIZE - 1)
 
 static MUTEX_DECL(action_queue_mutex);
