@@ -1,5 +1,6 @@
 #include "action_queue.h"
 #include "move_command.h"
+#include "wall_follower.h"
 
 static void dispatch_action(action_t action) {
 	switch (action) {

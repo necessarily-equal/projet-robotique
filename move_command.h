@@ -90,9 +90,9 @@ void stop_move(void);
 
 /**
  * @brief       This semaphore tells you when the motor is done moving
- *              useful for chBSemWait(get_motor_semaphore_ptr());
+ *              usefull for chBSemWait(get_motor_sempahore_ptr());
  * 
  * @return      binary_semaphore_t* 
  */
-binary_semaphore_t *get_motor_semaphore_ptr(void);
+binary_semaphore_t *get_motor_sempahore_ptr(void);
 #endif /* _MOVE_COMMAND_H_ */

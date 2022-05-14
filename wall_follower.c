@@ -1,11 +1,10 @@
 /**
  * @file wall_follower.c
- * @brief
+ * @brief 
+ * 
  */
 
 // C standard headers
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 // ChibiOS headers
@@ -16,7 +15,6 @@
 // e-puck 2 main processor headers
 #include "sensors/proximity.h"
 #include <chprintf.h>
-#include "leds.h"
 
 // Module headers
 #include "wall_follower.h"
@@ -24,9 +22,9 @@
 #include <move_command.h>
 
 /*===========================================================================*/
-/* Wall PID constants.                                                       */
+/* Module constants.                                                         */
 /*===========================================================================*/
-
+//PID constants.
 #define WALL_TARGET             250
 #define CORRECTION_THRESHOLD    5
 
@@ -39,42 +37,37 @@
 #define LINK_KI                 0.5f
 #define LINK_KD                 5.0f
 #define MAX_SUM_ERROR 			100
+//Walls constants.
+#define WALL_EDGE_THLD          100 // IR3 & IR6
+#define FRONT_WALL_THLD         1000 // IR1 & IR8
+#define FRONT_SIDE_WALL_THLD    1000 // IR2 & IR7
+#define WALL_DETECTED_THLD      200
 
-/*===========================================================================*/
-/* Module constants.                                                         */
-/*===========================================================================*/
-
-#define SIDE_JUNCTION_THLD      100
-#define FRONT_WALL_THLD         200
-
-#define LINK_NAVIGATION_PERIOD  100
-#define JUNCTION_STUDY_PERIOD   100
+//Thread constants.
+#define WALL_FOLLOWER_PERIOD    100
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
-static bool end_of_wall_detected = false;
+static bool wall_follower_thd_created = false;
+static bool wall_follower_thd_paused = false;
 
-//Threads variables
-static bool wall_follower_paused = false;   //thread is paused
-static bool wall_following_thd_active = false;      //thread is created
-
-static bool junction_study_paused = false;
-static bool junction_study_thd_active = false;
+static bool left_wall_detected = false;
+static bool right_wall_detected = false;
+static bool front_wall_detected = false;
 
 /*===========================================================================*/
 /* Semaphores.                                                               */
 /*===========================================================================*/
 
-static BSEMAPHORE_DECL(junction_detected, TRUE);
+static BSEMAPHORE_DECL(wall_edge_detected, TRUE);
 
 /*===========================================================================*/
 /* Module thread pointers.                                                   */
 /*===========================================================================*/
 
 static thread_t *ptr_wall_follower_thd;
-static thread_t *ptr_study_junction_thd;
 
 /*===========================================================================*/
 /* Module local functions.                                                   */
@@ -119,26 +112,36 @@ int16_t pid_regulator(float current, float target)
     return (int16_t)control;
 }
 
-bool detect_end_of_wall(void)
-{
-    if(get_ir_delta(IR6) < SIDE_JUNCTION_THLD || get_ir_delta(IR3) < SIDE_JUNCTION_THLD)
-    {
-        return true;
-    }
+bool wall_detected(void) {
+    return (front_wall_detected || right_wall_detected || left_wall_detected);
+}
+
+bool check_front_sensors(void) {
+    //Front checks
+    if(get_ir_delta(IR1) > FRONT_WALL_THLD) return true;
+    if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
+    //Front left and right checks
+    if(get_ir_delta(IR8) > FRONT_WALL_THLD) return true;
+    if(get_ir_delta(IR7) > FRONT_SIDE_WALL_THLD) return true;
     return false;
 }
 
-bool detect_dead_end(void)
-{
-    if(get_ir_delta(IR1) > FRONT_WALL_THLD || get_ir_delta(IR8) > FRONT_WALL_THLD){
-        return true;
-    }
+bool check_right_sensors(void) {
+    if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
+    if(get_ir_delta(IR3) > FRONT_SIDE_WALL_THLD) return true;
     return false;
 }
 
-void move_to_junction_center(void)
-{
-    move(WALL_DISTANCE/20, FORWARD);
+bool check_left_sensors(void) {
+    if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
+    if(get_ir_delta(IR3) > FRONT_SIDE_WALL_THLD) return true;
+    return false;
+}
+
+bool check_wall_edge(void) {
+    if(get_ir_delta(IR3) > WALL_EDGE_THLD) return true;
+    if(get_ir_delta(IR6) > WALL_EDGE_THLD) return true;
+    return false;
 }
 
 /*===========================================================================*/
@@ -153,163 +156,102 @@ static THD_FUNCTION(wall_follower_thd, arg)
 
     systime_t time;
     int delta_speed = 0;
-
     while(!chThdShouldTerminateX())
     {
         //Thread Sleep
         chSysLock();
-        if(wall_follower_paused)
-            chSchGoSleepS(CH_STATE_SUSPENDED);
-        chSysUnlock();
-        //Thread loop function
-        time = chVTGetSystemTime();
-
-        delta_speed = pid_regulator(get_ir_delta(IR6), WALL_TARGET);
-        if(fabs(delta_speed) < CORRECTION_THRESHOLD)
-            delta_speed = 0;
-        set_lr_speed(get_current_speed() + delta_speed,
-                     get_current_speed() - delta_speed);
-
-        //Thread exit condition
-        if(detect_end_of_wall() || detect_dead_end()){
-            wall_follower_paused = true;
-            chBSemSignal(&junction_detected);
-            stop_move();
-        }
-
-        //Thread refresh rate
-        chThdSleepUntilWindowed(time, time + MS2ST(LINK_NAVIGATION_PERIOD));
-    }
-
-    wall_following_thd_active = false;
-    chThdExit(0);
-}
-
-static THD_WORKING_AREA(wa_junction_study_thd, 1024);
-static THD_FUNCTION(junction_study_thd, arg)
-{
-    chRegSetThreadName(__FUNCTION__);
-	(void)arg;
-
-    systime_t time;
-
-    while(!chThdShouldTerminateX())
-    {
-        //Thread Sleep
-        chSysLock();
-        if(junction_study_paused)
+        if(wall_follower_thd_paused)
             chSchGoSleepS(CH_STATE_SUSPENDED);
         chSysUnlock();
         //Thread body
         time = chVTGetSystemTime();
-        chBSemWait(&junction_detected);
-        set_body_led(true);
-        move_to_junction_center();
-        set_body_led(false);
-        //update_junction_table();
-        //do actions
-        //Thread refresh rate
-        chThdSleepUntilWindowed(time, time + MS2ST(JUNCTION_STUDY_PERIOD));
-    }   
+        chprintf((BaseSequentialStream *)&SD3, "WALL THD LAUNCHED\r\n");
+        //detects left right wall
+        while(!wall_detected()) {
+            left_wall_detected = check_left_sensors();
+            front_wall_detected = check_front_sensors();
+            right_wall_detected = check_right_sensors();
+            chprintf((BaseSequentialStream *)&SD3, "GO TO WALL\r\n");
+            set_default_speed();
+            set_lr_speed(get_current_speed(), get_current_speed());
+        }
+        while (!front_wall_detected) {
+            if(left_wall_detected) {
+                delta_speed = pid_regulator(get_ir_delta(IR6), WALL_TARGET);
+                if(fabs(delta_speed) < CORRECTION_THRESHOLD)
+                    delta_speed = 0;
+                set_lr_speed(get_current_speed() + delta_speed,
+                             get_current_speed() - delta_speed);
+            }
+            else if (right_wall_detected) {
+                delta_speed = pid_regulator(get_ir_delta(IR3), WALL_TARGET);
+                if(fabs(delta_speed) < CORRECTION_THRESHOLD)
+                    delta_speed = 0;
+                set_lr_speed(get_current_speed() - delta_speed,
+                             get_current_speed() + delta_speed);
+            }
+            if(check_wall_edge()) {
+                wall_follower_thd_paused = true;
+                chBSemSignal(&wall_edge_detected);
+                break;
+            }
+        }
+        stop_move();
+        chThdSleepUntilWindowed(time, time + MS2ST(WALL_FOLLOWER_PERIOD));
+    }
 
-    junction_study_thd_active = false;
-    chThdExit(0); 
+    wall_follower_thd_created = false;
+	chThdExit(0);
 }
 
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
-void create_wall_follower_thd(void)
-{
-    if(!wall_following_thd_active)
-    {
+void create_wall_follower_thd(void) {
+    if(!wall_follower_thd_created) {
         ptr_wall_follower_thd = chThdCreateStatic(wa_wall_follower_thd,
-            sizeof(wa_wall_follower_thd), NORMALPRIO, wall_follower_thd,
-            NULL);
-        wall_following_thd_active = true;
+            sizeof(wa_wall_follower_thd), NORMALPRIO, wall_follower_thd, NULL);
+        wall_follower_thd_created = true;
     }
 }
 
-void stop_wall_follower_thd(void)
-{
-    if(wall_following_thd_active)
-    {
+void stop_wall_follower_thd(void) {
+    if(wall_follower_thd_created) {
         resume_wall_follower_thd();
         chThdTerminate(ptr_wall_follower_thd);
         chThdWait(ptr_wall_follower_thd);
         stop_move();
-        wall_follower_paused = false;
-        wall_following_thd_active = false;
+        wall_follower_thd_created = false;
+        wall_follower_thd_paused = false;
     }
 }
 
-void pause_wall_follower_thd(void)
-{
-    if(wall_following_thd_active)
-        wall_follower_paused = true;
+void pause_wall_follower_thd(void) {
+    if (wall_follower_thd_created) wall_follower_thd_paused = true;
 }
 
-void resume_wall_follower_thd(void)
-{
+void resume_wall_follower_thd(void) {
     chSysLock();
-    if(wall_follower_paused && wall_following_thd_active){
-        chSchWakeupS(ptr_wall_follower_thd, CH_STATE_READY);
-        wall_follower_paused = false;
-    }
-    chSysUnlock();
+	if(wall_follower_thd_created && wall_follower_thd_paused){
+		chSchWakeupS(ptr_wall_follower_thd, CH_STATE_READY);
+		wall_follower_thd_paused = false;
+	}
+	chSysUnlock();
 }
 
-///////////////////////////////////////////////////////////////////////
-
-bool reached_end_of_wall(void)
-{
-    return (end_of_wall_detected && wall_follower_paused);
+bool wall_follower_thd_status(void) {
+    return wall_follower_thd_created;
 }
 
-bool wall_follower_thd_state(void)
-{
-    return wall_following_thd_active;
+void move_to_next_wall(void) {
+    left_wall_detected = false;
+    front_wall_detected = false;
+    right_wall_detected = false;
+    wall_follower_thd_paused = false;
 }
 
-//////////////////////////////////////////////////////////////////////
-
-void create_junction_study_thd(void)
+binary_semaphore_t *get_edge_detected_semaphore_ptr(void)
 {
-    if(!junction_study_thd_active)
-    {
-        ptr_study_junction_thd = chThdCreateStatic(wa_junction_study_thd,
-            sizeof(wa_junction_study_thd), NORMALPRIO, junction_study_thd,
-            NULL);
-        junction_study_thd_active = true;
-    }
-}
-
-void stop_junction_study_thd(void)
-{
-    if(junction_study_thd_active)
-    {
-        resume_junction_study_thd();
-        chThdTerminate(ptr_study_junction_thd);
-        chThdWait(ptr_study_junction_thd);
-        stop_move();
-        junction_study_paused = false;
-        junction_study_thd_active = false;
-    }
-}
-
-void pause_junction_study_thd(void)
-{
-    if(junction_study_thd_active)
-        junction_study_paused = true;
-}
-
-void resume_junction_study_thd(void)
-{
-    chSysLock();
-    if(junction_study_paused && junction_study_thd_active){
-        chSchWakeupS(ptr_study_junction_thd, CH_STATE_READY);
-        junction_study_paused = false;
-    }
-    chSysUnlock();
+	return &wall_edge_detected;
 }
