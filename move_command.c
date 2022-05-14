@@ -253,7 +253,7 @@ void stop_move(void) {
 	rotation_enabled = false;
 }
 
-binary_semaphore_t *get_motor_sempahore_ptr(void) {
+binary_semaphore_t *get_motor_semaphore_ptr(void) {
 	return &move_finished;
 }
 

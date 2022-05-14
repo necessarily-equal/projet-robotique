@@ -31,12 +31,12 @@
 #define LINK_ERROR_THRESHOLD    0.1f
 #define LINK_UPPER_CLAMP        100
 #define LINK_LOWER_CLAMP        -100
-#define LINK_KP                 0.01f
-#define LINK_KI                 0.1f
+#define LINK_KP                 0.025f
+#define LINK_KI                 0.015f
 #define LINK_KD                 5.0f
 #define MAX_SUM_ERROR 			100
 //Walls constants.
-#define WALL_EDGE_THLD          150 // IR3 & IR6
+#define WALL_EDGE_THLD          100 // IR3 & IR6
 #define FRONT_WALL_THLD         1500 // IR1 & IR8
 #define FRONT_SIDE_WALL_THLD    1000 // IR2 & IR7
 
@@ -167,13 +167,11 @@ static THD_FUNCTION(wall_follower_thd, arg)
             left_wall_detected = check_left_sensors();
             right_wall_detected = check_right_sensors();
             front_wall_detected = check_front_sensors();
-            if(right_wall_detected && left_wall_detected) {
-
-            }
             set_default_speed();
             set_lr_speed(get_current_speed(), get_current_speed());
         }
         while (!front_wall_detected) {
+
             front_wall_detected = check_front_sensors();
             if(left_wall_detected) {
                 delta_speed = pid_regulator(get_ir_delta(IR6), WALL_TARGET);
@@ -244,10 +242,12 @@ bool wall_follower_thd_status(void) {
 }
 
 void move_to_next_wall(void) {
+    chBSemReset(&wall_edge_detected, true);
     left_wall_detected = false;
     front_wall_detected = false;
     right_wall_detected = false;
     wall_follower_thd_paused = false;
+    resume_wall_follower_thd();
 }
 
 binary_semaphore_t *get_edge_detected_semaphore_ptr(void)

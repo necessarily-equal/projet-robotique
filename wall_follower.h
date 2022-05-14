@@ -13,12 +13,9 @@
 /*===========================================================================*/
 
 void create_wall_follower_thd(void);
-
 void stop_wall_follower_thd(void);
-
 void pause_wall_follower_thd(void);
 void resume_wall_follower_thd(void);
-
 bool wall_follower_thd_status(void);
 
 binary_semaphore_t *get_edge_detected_semaphore_ptr(void);

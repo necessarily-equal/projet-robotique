@@ -94,5 +94,5 @@ void stop_move(void);
  * 
  * @return      binary_semaphore_t* 
  */
-binary_semaphore_t *get_motor_sempahore_ptr(void);
+binary_semaphore_t *get_motor_semaphore_ptr(void);
 #endif /* _MOVE_COMMAND_H_ */
