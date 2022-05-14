@@ -1,6 +1,7 @@
 #include "action_queue.h"
 #include "move_command.h"
 #include "wall_follower.h"
+#include "ir_sensors.h"
 
 static void dispatch_action(action_t action) {
 	switch (action) {
@@ -38,9 +39,15 @@ static void wait_action(action_t action) {
 	}
 }
 
+// this implements a simple left-following maze solving algorithm
 static action_t find_next_action(void) {
-	// TODO
-	return ACTION_VOID;
+	if (get_ir_delta(IR6) < 100)
+		return ACTION_LEFT;
+	if (get_tof_dist() > 300)
+		return ACTION_STRAIGHT;
+	if (get_ir_delta(IR3) > 100)
+		return ACTION_RIGHT;
+	return ACTION_BACK;
 }
 
 void control_maze(void) {
