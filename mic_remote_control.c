@@ -1,5 +1,5 @@
 /**
- * @file    mic_processing.c
+ * @file    mic_remote_control.c
  * @brief   
  */
 
@@ -18,9 +18,10 @@
 #include <arm_math.h>
 
 // Module headers
-#include <mic_processing.h>
-#include <arm_fft.h>
-#include <move_command.h>
+#include "action_queue.h"
+#include "mic_remote_control.h"
+#include "arm_fft.h"
+#include "move_command.h"
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -37,35 +38,20 @@
 #define MAX_FREQ        		30
 
 //Frequencies attributed to command
-#define FREQ_WAIT       		12  //188Hz
-#define FREQ_MOVE       		14  //219Hz
-#define FREQ_RST_MAZE			16  //250Hz
-#define FREQ_START_MAZE 		18  //281Hz
 #define FREQ_U_TURN     		20  //312Hz
 #define FREQ_TURN_LEFT  		22  //344Hz
 #define FREQ_TURN_RIGHT 		24  //375Hz
-#define FREQ_SLOW_DOWN  		26  //406Hz
-#define FREQ_SPEED_UP   		28  //437Hz
+#define FREQ_STRAIGHT    		26  //406Hz
 
 //Frequencies ranges (attributed to center frequency plus minus one)
-#define FREQ_WAIT_LOW           (FREQ_WAIT-1)
-#define FREQ_WAIT_HIGH          (FREQ_WAIT+1)
-#define FREQ_MOVE_LOW           (FREQ_MOVE-1)
-#define FREQ_MOVE_HIGH          (FREQ_MOVE+1)
-#define FREQ_START_MAZE_LOW     (FREQ_START_MAZE-1)
-#define FREQ_START_MAZE_HIGH    (FREQ_START_MAZE+1)
-#define FREQ_RST_MAZE_LOW      	(FREQ_RST_MAZE-1)
-#define FREQ_RST_MAZE_HIGH     	(FREQ_RST_MAZE+1)
 #define FREQ_U_TURN_LOW         (FREQ_U_TURN-1)
 #define FREQ_U_TURN_HIGH        (FREQ_U_TURN+1)
 #define FREQ_TURN_LEFT_LOW      (FREQ_TURN_LEFT-1)
 #define FREQ_TURN_LEFT_HIGH     (FREQ_TURN_LEFT+1)
 #define FREQ_TURN_RIGHT_LOW     (FREQ_TURN_RIGHT-1)
 #define FREQ_TURN_RIGHT_HIGH    (FREQ_TURN_RIGHT+1)
-#define FREQ_SLOW_DOWN_LOW      (FREQ_SLOW_DOWN-1)
-#define FREQ_SLOW_DOWN_HIGH     (FREQ_SLOW_DOWN+1)
-#define FREQ_SPEED_UP_LOW       (FREQ_SLOW_DOWN-1)
-#define FREQ_SPEED_UP_HIGH      (FREQ_SLOW_DOWN+1)
+#define FREQ_STRAIGHT_LOW       (FREQ_STRAIGHT-1)
+#define FREQ_STRAIGHT_HIGH      (FREQ_STRAIGHT+1)
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
@@ -81,9 +67,6 @@ static float micLeft_output[FFT_SIZE];
 //static float micRight_output[FFT_SIZE];
 //static float micFront_output[FFT_SIZE];
 //static float micBack_output[FFT_SIZE];
-
-//Default command state
-static command_t status = WAIT_CMD;
 
 //Thread state
 static bool selector_thd_active = false;
@@ -102,9 +85,29 @@ static thread_t *ptr_mic_selector_thd = NULL;
 /* Module local functions.                                                   */
 /*===========================================================================*/
 
+static action_t identify_frequency(uint16_t freq) {
+	if(freq >= FREQ_U_TURN_LOW &&
+	   freq <= FREQ_U_TURN_HIGH){
+		return ACTION_BACK;
+	}
+	else if(freq >= FREQ_TURN_LEFT_LOW &&
+	   freq <= FREQ_TURN_LEFT_HIGH){
+		return ACTION_LEFT;
+	}
+	else if(freq >= FREQ_TURN_RIGHT_LOW &&
+	   freq <= FREQ_TURN_RIGHT_HIGH){
+		return ACTION_RIGHT;
+	}
+	else if(freq >= FREQ_STRAIGHT_LOW &&
+	   freq <= FREQ_STRAIGHT_HIGH){
+		return ACTION_STRAIGHT;
+	}
+	return ACTION_VOID;
+}
+
 void mic_remote(float* data){
     float max_norm = MIN_VALUE_THRESHOLD;
-    int16_t max_norm_index = -1;
+    int16_t max_norm_index = 0;
 
     //search for the highest peak
 	for(uint16_t i = MIN_FREQ ; i <= MAX_FREQ ; i++){
@@ -114,86 +117,25 @@ void mic_remote(float* data){
 		}
 	}
 
-    //Simple state machine
-    switch(status){
-        case IDLE_CMD:
-            if(max_norm_index >= FREQ_WAIT_LOW &&
-               max_norm_index <= FREQ_WAIT_HIGH){
-				status=WAIT_CMD;
-               }
-			else if(max_norm_index >= FREQ_MOVE_LOW &&
-               max_norm_index <= FREQ_MOVE_HIGH){
-				status=MOVE_CMD;
-               }
-            else if(max_norm_index >= FREQ_START_MAZE_LOW &&
-               max_norm_index <= FREQ_START_MAZE_HIGH){
-				status=START_MAZE_CMD;
-               }
-            else if(max_norm_index >= FREQ_RST_MAZE_LOW &&
-               max_norm_index <= FREQ_RST_MAZE_HIGH){
-				status=RST_MAZE_CMD;
-               }
-            else if(max_norm_index >= FREQ_U_TURN_LOW &&
-               max_norm_index <= FREQ_U_TURN_HIGH){
-				status=U_TURN_CMD;
-               }
-            else if(max_norm_index >= FREQ_TURN_LEFT_LOW &&
-               max_norm_index <= FREQ_TURN_LEFT_HIGH){
-				status=TURN_LEFT_CMD;
-               }
-            else if(max_norm_index >= FREQ_TURN_RIGHT_LOW &&
-               max_norm_index <= FREQ_TURN_RIGHT_HIGH){
-				status=TURN_RIGHT_CMD;
-               }
-            else if(max_norm_index >= FREQ_SLOW_DOWN_LOW &&
-               max_norm_index <= FREQ_SLOW_DOWN_HIGH){
-				status=SLOW_DOWN_CMD;
-               }
-            else if(max_norm_index >= FREQ_SPEED_UP_LOW &&
-               max_norm_index <= FREQ_SPEED_UP_HIGH){
-				status=SPEED_UP_CMD;
-               }
-            break;
+	static action_t last_identified_frequencies[5] = {};
+	static size_t last_identified_frequencies_index = 0;
+	static const size_t last_identified_frequencies_len = sizeof(last_identified_frequencies) / sizeof(int16_t);
 
-    case WAIT_CMD:
-		right_angle_turn(CLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case MOVE_CMD:
-		right_angle_turn(CLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case START_MAZE_CMD:
-		right_angle_turn(CLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case RST_MAZE_CMD:
-		right_angle_turn(CLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case U_TURN_CMD:
-		right_angle_turn(CLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case TURN_LEFT_CMD:
-		right_angle_turn(COUNTERCLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case TURN_RIGHT_CMD:
-		right_angle_turn(COUNTERCLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case SLOW_DOWN_CMD:
-		right_angle_turn(COUNTERCLOCKWISE);
-        status = IDLE_CMD;
-        break;
-    case SPEED_UP_CMD:
-		right_angle_turn(COUNTERCLOCKWISE);
-        status = IDLE_CMD;
-        break;
-	default:
-		status = IDLE_CMD;
-		break;
+	last_identified_frequencies[last_identified_frequencies_index++] = identify_frequency(max_norm_index);
+	last_identified_frequencies_index %= last_identified_frequencies_len;
+
+	for (size_t i = 1; i < last_identified_frequencies_len; i++) {
+			if (last_identified_frequencies[0] != last_identified_frequencies[i])
+					return; // nothing to do, not all the previous freq are equal
+	}
+
+	// last_identified_frequencies are all equal
+
+	static action_t last_added_action = ACTION_VOID;
+
+	if (last_identified_frequencies[0] != last_added_action) {
+		last_added_action = last_identified_frequencies[0];
+		action_queue_push(last_added_action);
 	}
 }
 
@@ -211,7 +153,7 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
      */
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
-	
+
 	if(!disable_mic){
 		//loop to fill the buffers
 		for(uint16_t i = 0 ; i < num_samples ; i+=4){

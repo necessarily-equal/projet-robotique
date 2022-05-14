@@ -6,11 +6,7 @@
 #ifndef _MOD_AUDIO_PROCESSING_H_
 #define _MOD_AUDIO_PROCESSING_H_
 
-/*===========================================================================*/
-/*  Module data structures and types                                         */
-/*===========================================================================*/
-
-typedef enum{
+typedef enum {
     IDLE_CMD = 0,       // put the e-puck in mic idle
     WAIT_CMD,           // prevents the e-puck from moving
     MOVE_CMD,           // allows the e-puck to move
@@ -22,10 +18,6 @@ typedef enum{
     SLOW_DOWN_CMD,      // order the e-puck to go in slow speed
     SPEED_UP_CMD,       // order the e-puck to go in "high" speed
 } command_t;
-
-/*========================================================================*/
-/*  External declarations                                                 */
-/*========================================================================*/
 
 void create_mic_selector_thd(void);
 

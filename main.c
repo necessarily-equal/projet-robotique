@@ -25,7 +25,7 @@
 #include <ir_sensors.h>
 #include <wall_follower.h>
 //#include <maze_control.h>
-#include <mic_processing.h>
+#include <mic_remote_control.h>
 #include <move_command.h>
 #include <communication.h>
 //#include <lfr_regulator.h>
