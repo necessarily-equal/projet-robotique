@@ -25,23 +25,20 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 //PID constants.
-#define WALL_TARGET             250
-#define CORRECTION_THRESHOLD    5
-
-#define WALL_DISTANCE           110
+#define WALL_TARGET             1000
+#define CORRECTION_THRESHOLD    1
 
 #define LINK_ERROR_THRESHOLD    0.1f
 #define LINK_UPPER_CLAMP        100
 #define LINK_LOWER_CLAMP        -100
-#define LINK_KP                 0.25f
-#define LINK_KI                 0.5f
+#define LINK_KP                 0.01f
+#define LINK_KI                 0.1f
 #define LINK_KD                 5.0f
 #define MAX_SUM_ERROR 			100
 //Walls constants.
-#define WALL_EDGE_THLD          100 // IR3 & IR6
-#define FRONT_WALL_THLD         1000 // IR1 & IR8
+#define WALL_EDGE_THLD          150 // IR3 & IR6
+#define FRONT_WALL_THLD         1500 // IR1 & IR8
 #define FRONT_SIDE_WALL_THLD    1000 // IR2 & IR7
-#define WALL_DETECTED_THLD      200
 
 //Thread constants.
 #define WALL_FOLLOWER_PERIOD    100
@@ -133,14 +130,14 @@ bool check_right_sensors(void) {
 }
 
 bool check_left_sensors(void) {
-    if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
-    if(get_ir_delta(IR3) > FRONT_SIDE_WALL_THLD) return true;
+    if(get_ir_delta(IR6) > FRONT_SIDE_WALL_THLD) return true;
+    if(get_ir_delta(IR7) > FRONT_SIDE_WALL_THLD) return true;
     return false;
 }
 
 bool check_wall_edge(void) {
-    if(get_ir_delta(IR3) > WALL_EDGE_THLD) return true;
-    if(get_ir_delta(IR6) > WALL_EDGE_THLD) return true;
+    if(get_ir_delta(IR3) < WALL_EDGE_THLD) return true;
+    if(get_ir_delta(IR6) < WALL_EDGE_THLD) return true;
     return false;
 }
 
@@ -165,17 +162,19 @@ static THD_FUNCTION(wall_follower_thd, arg)
         chSysUnlock();
         //Thread body
         time = chVTGetSystemTime();
-        chprintf((BaseSequentialStream *)&SD3, "WALL THD LAUNCHED\r\n");
         //detects left right wall
         while(!wall_detected()) {
             left_wall_detected = check_left_sensors();
-            front_wall_detected = check_front_sensors();
             right_wall_detected = check_right_sensors();
-            chprintf((BaseSequentialStream *)&SD3, "GO TO WALL\r\n");
+            front_wall_detected = check_front_sensors();
+            if(right_wall_detected && left_wall_detected) {
+
+            }
             set_default_speed();
             set_lr_speed(get_current_speed(), get_current_speed());
         }
         while (!front_wall_detected) {
+            front_wall_detected = check_front_sensors();
             if(left_wall_detected) {
                 delta_speed = pid_regulator(get_ir_delta(IR6), WALL_TARGET);
                 if(fabs(delta_speed) < CORRECTION_THRESHOLD)
@@ -190,13 +189,13 @@ static THD_FUNCTION(wall_follower_thd, arg)
                 set_lr_speed(get_current_speed() - delta_speed,
                              get_current_speed() + delta_speed);
             }
-            if(check_wall_edge()) {
+            if(check_wall_edge() || front_wall_detected) {
                 wall_follower_thd_paused = true;
                 chBSemSignal(&wall_edge_detected);
+                stop_move();
                 break;
             }
         }
-        stop_move();
         chThdSleepUntilWindowed(time, time + MS2ST(WALL_FOLLOWER_PERIOD));
     }
 
