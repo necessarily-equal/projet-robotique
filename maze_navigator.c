@@ -6,7 +6,7 @@
 static void dispatch_action(action_t action) {
 	switch (action) {
 	case ACTION_STRAIGHT:
-		// TODO: call forward
+		move_to_next_wall();
 		break;
 	case ACTION_BACK:
 		u_turn();
@@ -51,6 +51,10 @@ static action_t find_next_action(void) {
 }
 
 void control_maze(void) {
+	action_queue_push(ACTION_STRAIGHT);
+	action_queue_push(ACTION_RIGHT);
+	action_queue_push(ACTION_STRAIGHT);
+	action_queue_push(ACTION_LEFT);
 	while (1) {
 		action_t current_action = action_queue_pop();
 		if (!current_action) {
