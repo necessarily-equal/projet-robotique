@@ -57,11 +57,6 @@
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
-//2 times FFT_SIZE because these arrays contain complex numbers
-static float micLeft_cmplx_input[2 * FFT_SIZE];
-//Arrays containing the computed magnitude of the complex numbers
-static float micLeft_output[FFT_SIZE];
-
 //Thread state
 static bool selector_thd_active = false;
 static bool selector_thd_paused = false;
@@ -147,6 +142,11 @@ void process_audio_data(int16_t *data, uint16_t num_samples){
      */
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
+
+	//2 times FFT_SIZE because these arrays contain complex numbers
+	static float micLeft_cmplx_input[2 * FFT_SIZE];
+	//Arrays containing the computed magnitude of the complex numbers
+	static float micLeft_output[FFT_SIZE];
 
 	if(disable_mic)
 		return;
