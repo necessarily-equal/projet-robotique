@@ -111,6 +111,8 @@ bool action_queue_full(void) {
 }
 
 void action_queue_push(action_t action) {
+	if (!action) return;
+
 	chMtxLock(&action_queue_mutex);
 	if (((action_queue_back+1) & ACTION_QUEUE_MASK) == action_queue_front) {
 		// the queue is already full
