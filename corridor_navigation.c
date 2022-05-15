@@ -136,7 +136,6 @@ static THD_FUNCTION(corridor_nav_thd, arg)
             corridor_end_detected = check_corridor_end();
             corridor_pid_control();
         }
-        set_current_speed(0);
         chBSemSignal(&corridor_end_detected_semaphore);
         corridor_nav_thd_paused = true;
         //Thread refresh rate

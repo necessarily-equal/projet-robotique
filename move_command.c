@@ -49,6 +49,7 @@ static bool is_moving = false;
 static bool wall_ahead = false;
 static bool rotation_mode = false;
 static bool motor_thd_paused = false;
+static bool collision_enabled = true;
 
 static int32_t l_target_pos = 0;
 static int32_t r_target_pos = 0;
@@ -70,8 +71,8 @@ static BSEMAPHORE_DECL(move_command_finished, TRUE);
 
 bool collision(void) {
 	//Front
-	if(get_ir_delta(IR1) > WALL_THLD) return true;
-	if(get_ir_delta(IR8) > WALL_THLD) return true;
+	if((get_ir_delta(IR1) > WALL_THLD) && collision_enabled) return true;
+	if((get_ir_delta(IR8) > WALL_THLD) && collision_enabled) return true;
 	//Rear
 	//if(get_ir_delta(IR4) > WALL_THLD) return true;
 	//if(get_ir_delta(IR5) > WALL_THLD) return true;
@@ -106,6 +107,7 @@ void stop_moving(void) {
 	l_target_pos = 0;
 	r_target_pos = 0;
 	is_moving = false;
+	collision_enabled = true;
 	chBSemSignal(&move_command_finished);
 }
 
@@ -122,7 +124,7 @@ static THD_FUNCTION(motor_thd, arg) {
 
 	while (true) {
 		wall_ahead = collision();
-		if (wall_ahead) stop_moving();
+		if (wall_ahead && collision_enabled) stop_moving();
 		else {
 			if (motor_thd_paused) {
 				left_motor_set_speed(NULL_SPEED);
@@ -166,7 +168,8 @@ bool get_is_moving(void) {
 
 void turn(float position, rotation_t direction) {
 	motor_thd_paused = false;
-	if (!is_moving && !wall_ahead) {
+	collision_enabled = false;
+	if (!is_moving) {
 		left_motor_set_pos(0);
 		right_motor_set_pos(0);
 		l_target_pos = position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
