@@ -23,7 +23,7 @@
 // Module headers
 #include <main.h>
 #include <ir_sensors.h>
-#include <wall_follower.h>
+#include <corridor_navigation.h>
 //#include <maze_control.h>
 #include <mic_remote_control.h>
 #include <move_command.h>
@@ -67,11 +67,7 @@ static void init_all(void){
     create_motor_thd();
     set_default_speed();
     sensors_init();
-    chThdSleepMilliseconds(1000);
-    create_wall_follower_thd();
-
-    //create_wall_follower_thd();
-    //create_junction_study_thd();
+    create_corridor_navigation_thd();
 }
 
 /*===========================================================================*/
@@ -81,25 +77,7 @@ static void init_all(void){
 int main(void)
 {
     init_all();
-    move_to_next_wall();
-    chThdSleepMilliseconds(15000);
-    //control_maze();
-    while(true){
-        chprintf((BaseSequentialStream *)&SD3, "IR TOF\r\n");
-        chprintf((BaseSequentialStream *)&SD3,"%u\n", get_tof_dist());
-        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
-        chprintf((BaseSequentialStream *)&SD3, "IR PROXIMITY\r\n");
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR1));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR2));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR3));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR4));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR5));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR6));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR7));
-        chprintf((BaseSequentialStream *)&SD3, "%4d ", get_ir_delta(IR8));
-        chprintf((BaseSequentialStream *)&SD3, "\r\n\n");
-        chThdSleepMilliseconds(MAIN_PERIOD);
-    }
+    control_maze();
 }
 
 #define STACK_CHK_GUARD 0xe2dee396

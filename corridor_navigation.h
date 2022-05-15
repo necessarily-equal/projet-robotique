@@ -12,14 +12,12 @@
 /*  External declarations                                                    */
 /*===========================================================================*/
 
-void create_wall_follower_thd(void);
-void stop_wall_follower_thd(void);
-void pause_wall_follower_thd(void);
-void resume_wall_follower_thd(void);
-bool wall_follower_thd_status(void);
+void create_corridor_navigation_thd(void);
+void disable_corridor_navigation_thd(void);
+void navigate_corridor(void);
 
-binary_semaphore_t *get_edge_detected_semaphore_ptr(void);
+bool corridor_navigation_thd_status(void);
 
-void move_to_next_wall(void);
+binary_semaphore_t *get_corridor_end_detected_semaphore_ptr(void);
 
 #endif /* _MAZE_CONTROL_H_ */

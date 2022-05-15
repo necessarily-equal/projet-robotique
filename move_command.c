@@ -176,6 +176,7 @@ void u_turn(void) {
 void turn(float position, rotation_t direction) {
 	if (motor_thd_created && !motor_thd_paused) {
 		if (!is_moving) {
+			set_default_speed();
 			left_motor_set_pos(0);
 			right_motor_set_pos(0);
 			l_target_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
@@ -196,6 +197,7 @@ void turn(float position, rotation_t direction) {
 void move(float position, direction_t direction) {
 	if (motor_thd_created && !motor_thd_paused) {
 		if (!is_moving) {
+			set_default_speed();
 			left_motor_set_pos(0);
 			right_motor_set_pos(0);
 			l_target_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
@@ -245,12 +247,10 @@ void set_lr_speed(int left_speed, int right_speed) {
 
 void stop_move(void) {
 	is_moving = false;
-	left_motor_set_speed(NULL_SPEED);
-	right_motor_set_speed(NULL_SPEED);
-	l_target_pos = 0;
-	r_target_pos = 0;
 	current_direction = FORWARD;
 	rotation_enabled = false;
+	l_target_pos = 0;
+	r_target_pos = 0;
 }
 
 binary_semaphore_t *get_motor_semaphore_ptr(void) {

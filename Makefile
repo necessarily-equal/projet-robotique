@@ -15,7 +15,7 @@ CSRC += ./main.c \
 		./move_command.c \
 		./ir_sensors.c \
 		./maze_navigator.c \
-		./wall_follower.c \
+		./corridor_navigation.c \
 		./action_queue.c
 
 #Header folders to include
