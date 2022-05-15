@@ -14,8 +14,8 @@
 /*===========================================================================*/
 
 typedef enum {
-    CLOCKWISE           = 1,
-    COUNTERCLOCKWISE    = -1,
+    CLOCKWISE           = -1,
+    COUNTERCLOCKWISE    = 1,
 } rotation_t;
 
 typedef enum {
@@ -27,7 +27,7 @@ typedef enum {
 /*  External declarations                                                    */
 /*===========================================================================*/
 
-void init_motor_thd(void);
+void init_motors_thd(void);
 
 void pause_motor_thd(void);
 void resume_motor_thd(void);
