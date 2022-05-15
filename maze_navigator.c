@@ -42,6 +42,10 @@ static action_t show_next_actions(void) {
 
 // this implements a simple left-following maze solving algorithm
 static action_t find_next_action(void) {
+	bool is_auto_feature_enabled = (selector % 4) <= 1;
+	if (!is_auto_feature_enabled)
+		return ACTION_VOID;
+
 	if (get_ir_delta(IR6) < 150)
 		return ACTION_LEFT;
 	if (dist_get_distance() > 80)
@@ -52,33 +56,23 @@ static action_t find_next_action(void) {
 }
 
 void control_maze(void) {
-	action_queue_push(ACTION_STRAIGHT);
-	action_queue_push(ACTION_RIGHT);
-	action_queue_push(ACTION_STRAIGHT);
-	action_queue_push(ACTION_LEFT);
-	action_queue_push(ACTION_STRAIGHT);
-	action_queue_push(ACTION_BACK);
-	while (true) {
-		show_next_actions();
-		action_t current_action = ACTION_VOID;
-		if (!(current_action = action_queue_pop())) {
-			if (!(current_action = find_next_action())) {
-				// signal that we are stuck
-				set_front_led(1);
-				//// here's a sleep so we avoid crashing
-				//chThdSleepMilliseconds(100);
-				//continue;
+	action_t current_action = ACTION_VOID;
+	if (!(current_action = action_queue_pop())) {
+		if (!(current_action = find_next_action())) {
+			// signal that we are stuck
+			set_front_led(1);
 
-				while(true) {
-					show_next_actions();
-					chThdSleepMilliseconds(10);
-				}
+			while(true) {
+				show_next_actions();
+				chThdSleepMilliseconds(10);
 			}
 		}
-
-		set_front_led(0);
-		// save and execute this action
-		saved_path_push(current_action);
-		execute_action(current_action);
 	}
+
+	set_front_led(0);
+	show_next_actions();
+
+	// save and execute this action
+	saved_path_push(current_action);
+	execute_action(current_action);
 }

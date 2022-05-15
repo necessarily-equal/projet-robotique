@@ -202,16 +202,14 @@ static THD_FUNCTION(thd_mic_selector, arg)
 	mic_start(&process_audio_data);
 
 	while(!chThdShouldTerminateX()){
-		//Thread Sleep
 		chSysLock();
 		if (selector_thd_paused){
 			chSchGoSleepS(CH_STATE_SUSPENDED);
 		}
 		chSysUnlock();
-		//Thread function
-		disable_mic = !!(get_selector() & (1<<3));
 
-		//Thread refresh rate
+		disable_mic = (selector % 8) <= 3;
+
 		time = chVTGetSystemTime();
 		chThdSleepUntilWindowed(time, time + MS2ST(MIC_SELECTOR_PERIOD));
 	}

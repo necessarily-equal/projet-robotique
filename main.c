@@ -29,6 +29,7 @@
 #include <maze_navigator.h>
 #include <move_command.h>
 #include <communication.h>
+#include <action_queue.h>
 //#include <lfr_regulator.h>
 //#include <image_processing.h>
 
@@ -66,8 +67,19 @@ static void init_all(void){
     create_mic_selector_thd();
 
     init_motors_thd();
+    dist_init();
     sensors_init();
     create_corridor_navigation_thd();
+}
+
+static bool check_asks_for_replay_of_saved_actions(void) {
+	bool is_on = get_selector() >= 8;
+	static bool saved_value = true;
+	if (is_on && !saved_value) {
+		saved_value = true;
+		return true;
+	}
+	return false;
 }
 
 /*===========================================================================*/
@@ -76,8 +88,19 @@ static void init_all(void){
 
 int main(void)
 {
-    init_all();
-    control_maze();
+	init_all();
+	chThdSleepMilliseconds(2000);
+	while (true) {
+		if (check_asks_for_replay_of_saved_actions()) {
+			static action_t saved_path[SAVED_PATH_SIZE+1];
+			// reset saved path and enqueue the saved actions
+			get_simplified_saved_path(saved_path);
+			reset_saved_path();
+			for (action_t *action = saved_path; *action; action++)
+				action_queue_push(*action);
+		}
+		control_maze();
+	}
 }
 
 #define STACK_CHK_GUARD 0xe2dee396
