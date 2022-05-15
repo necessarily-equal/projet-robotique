@@ -208,7 +208,7 @@ static THD_FUNCTION(thd_mic_selector, arg)
 		}
 		chSysUnlock();
 
-		disable_mic = (selector % 8) <= 3;
+		disable_mic = (get_selector() % 8) <= 3;
 
 		time = chVTGetSystemTime();
 		chThdSleepUntilWindowed(time, time + MS2ST(MIC_SELECTOR_PERIOD));

@@ -49,7 +49,7 @@ static bool is_moving = false;
 static bool wall_ahead = false;
 static bool rotation_mode = false;
 static bool motor_thd_paused = false;
-static bool collision_enabled = true;
+static bool collision_enabled = false;
 
 static int32_t l_target_pos = 0;
 static int32_t r_target_pos = 0;
@@ -107,7 +107,7 @@ void stop_moving(void) {
 	l_target_pos = 0;
 	r_target_pos = 0;
 	is_moving = false;
-	collision_enabled = true;
+	collision_enabled = false;
 	chBSemSignal(&move_command_finished);
 }
 
@@ -124,7 +124,7 @@ static THD_FUNCTION(motor_thd, arg) {
 
 	while (true) {
 		wall_ahead = collision();
-		if (wall_ahead && collision_enabled) stop_moving();
+		if (wall_ahead) stop_moving();
 		else {
 			if (motor_thd_paused) {
 				left_motor_set_speed(NULL_SPEED);
@@ -184,6 +184,7 @@ void turn(float position, rotation_t direction) {
 
 void move(float position, direction_t direction) {
 	motor_thd_paused = false;
+	collision_enabled = false;
 	if (!is_moving) {
 		left_motor_set_pos(0);
 		right_motor_set_pos(0);

@@ -8,25 +8,28 @@
 static void execute_action(action_t action) {
 	switch (action) {
 	case ACTION_STRAIGHT:
-		move(6.0f, FORWARD);
+		move(4.0f, FORWARD);
 		chBSemWait(get_motor_semaphore_ptr());
 		navigate_corridor();
 		chBSemWait(get_corridor_end_detected_semaphore_ptr());
 		chBSemWait(get_motor_semaphore_ptr());
-		move(2.5f, FORWARD);
+		move(2.75f, FORWARD);
 		chBSemWait(get_motor_semaphore_ptr());
 		break;
 	case ACTION_BACK:
 		u_turn();
 		chBSemWait(get_motor_semaphore_ptr());
+		action_queue_push(ACTION_STRAIGHT);
 		break;
 	case ACTION_LEFT:
 		right_angle_turn(COUNTERCLOCKWISE);
 		chBSemWait(get_motor_semaphore_ptr());
+		action_queue_push(ACTION_STRAIGHT);
 		break;
 	case ACTION_RIGHT:
 		right_angle_turn(CLOCKWISE);
 		chBSemWait(get_motor_semaphore_ptr());
+		action_queue_push(ACTION_STRAIGHT);
 		break;
 	default:
 		break;
@@ -42,7 +45,7 @@ static action_t show_next_actions(void) {
 
 // this implements a simple left-following maze solving algorithm
 static action_t find_next_action(void) {
-	bool is_auto_feature_enabled = (selector % 4) <= 1;
+	bool is_auto_feature_enabled = (get_selector() % 4) <= 1;
 	if (!is_auto_feature_enabled)
 		return ACTION_VOID;
 
@@ -52,7 +55,7 @@ static action_t find_next_action(void) {
 		return ACTION_STRAIGHT;
 	if (get_ir_delta(IR3) < 150)
 		return ACTION_RIGHT;
-	return ACTION_VOID;
+	return ACTION_BACK;
 }
 
 void control_maze(void) {

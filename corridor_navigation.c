@@ -29,11 +29,11 @@
 
 #define CORRECTION_THLD             1
 #define LINK_ERROR_THRESHOLD        0.1f
-#define LINK_UPPER_CLAMP            50
-#define LINK_LOWER_CLAMP            -50
-#define LINK_KP                     0.01f
-#define LINK_KI                     0.01f
-#define LINK_KD                     5.0f
+#define LINK_UPPER_CLAMP            25
+#define LINK_LOWER_CLAMP            -25
+#define LINK_KP                     0.3f
+#define LINK_KI                     0.0f
+#define LINK_KD                     120.0f
 #define MAX_SUM_ERROR 			    100
 //Walls constants.
 #define WALL_EDGE_THLD              100 // IR3 & IR6
@@ -80,7 +80,7 @@ int16_t pid_regulator(float current, float target)
     //Calculate the error
     error = current - target;
 
-    if(fabs(error) < LINK_ERROR_THRESHOLD) return 0;
+    //if(fabs(error) < LINK_ERROR_THRESHOLD) return 0;
     //Calculate the integral
     sum_error += error;
     //Calcualte the derivative
