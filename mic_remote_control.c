@@ -30,7 +30,7 @@
 #define MIC_SELECTOR_PERIOD		1000	// [ms]
 
 //FFT constants
-#define MIN_VALUE_THRESHOLD		35000
+#define MIN_VALUE_THRESHOLD		10000
 #define FFT_SIZE 				1024
 
 //Reduce the frequency range for efficency
@@ -38,20 +38,20 @@
 #define MAX_FREQ        		30
 
 //Frequencies attributed to command
-#define FREQ_U_TURN     		20  //312Hz
-#define FREQ_TURN_LEFT  		22  //344Hz
-#define FREQ_TURN_RIGHT 		24  //375Hz
-#define FREQ_STRAIGHT   		26  //406Hz
+#define FREQ_U_TURN     		20
+#define FREQ_TURN_LEFT  		22
+#define FREQ_TURN_RIGHT 		24
+#define FREQ_STRAIGHT   		26
 
 //Frequencies ranges (attributed to center frequency plus minus one)
-#define FREQ_U_TURN_LOW         (FREQ_U_TURN-1)
-#define FREQ_U_TURN_HIGH        (FREQ_U_TURN+1)
-#define FREQ_TURN_LEFT_LOW      (FREQ_TURN_LEFT-1)
-#define FREQ_TURN_LEFT_HIGH     (FREQ_TURN_LEFT+1)
-#define FREQ_TURN_RIGHT_LOW     (FREQ_TURN_RIGHT-1)
-#define FREQ_TURN_RIGHT_HIGH    (FREQ_TURN_RIGHT+1)
-#define FREQ_STRAIGHT_LOW       (FREQ_STRAIGHT-1)
-#define FREQ_STRAIGHT_HIGH      (FREQ_STRAIGHT+1)
+#define FREQ_U_TURN_LOW         (FREQ_U_TURN-2)
+#define FREQ_U_TURN_HIGH        (FREQ_U_TURN+2)
+#define FREQ_TURN_LEFT_LOW      (FREQ_TURN_LEFT-2)
+#define FREQ_TURN_LEFT_HIGH     (FREQ_TURN_LEFT+2)
+#define FREQ_TURN_RIGHT_LOW     (FREQ_TURN_RIGHT-2)
+#define FREQ_TURN_RIGHT_HIGH    (FREQ_TURN_RIGHT+2)
+#define FREQ_STRAIGHT_LOW       (FREQ_STRAIGHT-2)
+#define FREQ_STRAIGHT_HIGH      (FREQ_STRAIGHT+2)
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
@@ -106,7 +106,7 @@ void mic_remote(float* data){
 		}
 	}
 
-	static action_t last_identified_frequencies[5] = {};
+	static action_t last_identified_frequencies[3] = {};
 	static size_t last_identified_frequencies_index = 0;
 	static const size_t last_identified_frequencies_len = sizeof(last_identified_frequencies) / sizeof(*last_identified_frequencies);
 

@@ -61,21 +61,18 @@ static action_t find_next_action(void) {
 }
 
 void control_maze(void) {
+	show_next_actions();
+
 	action_t current_action = ACTION_VOID;
 	if (!(current_action = action_queue_pop())) {
 		if (!(current_action = find_next_action())) {
 			// signal that we are stuck
 			set_front_led(1);
-
-			while(true) {
-				show_next_actions();
-				chThdSleepMilliseconds(10);
-			}
+			chThdSleepMilliseconds(10);
 		}
 	}
 
 	set_front_led(0);
-	show_next_actions();
 
 	// save and execute this action
 	saved_path_push(current_action);
