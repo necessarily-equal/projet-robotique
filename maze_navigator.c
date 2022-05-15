@@ -5,68 +5,77 @@
 
 #include "leds.h"
 
-static void dispatch_action(action_t action) {
+static void execute_action(action_t action) {
 	switch (action) {
 	case ACTION_STRAIGHT:
+		move(6.0f, FORWARD);
+		chBSemWait(get_motor_semaphore_ptr());
 		navigate_corridor();
+		chBSemWait(get_corridor_end_detected_semaphore_ptr());
+		move(2.5f, FORWARD);
+		chBSemWait(get_motor_semaphore_ptr());
 		break;
 	case ACTION_BACK:
 		u_turn();
+		chBSemWait(get_motor_semaphore_ptr());
 		break;
 	case ACTION_LEFT:
 		right_angle_turn(COUNTERCLOCKWISE);
+		chBSemWait(get_motor_semaphore_ptr());
 		break;
 	case ACTION_RIGHT:
 		right_angle_turn(CLOCKWISE);
+		chBSemWait(get_motor_semaphore_ptr());
 		break;
 	default:
 		break;
 	}
 }
 
-static void wait_action(action_t action) {
-	switch(action) {
-	case ACTION_STRAIGHT:
-		chBSemWait(get_corridor_end_detected_semaphore_ptr());
-		break;
-	case ACTION_BACK:
-		chBSemWait(get_motor_semaphore_ptr());
-		break;
-	case ACTION_LEFT:
-		chBSemWait(get_motor_semaphore_ptr());
-		break;
-	case ACTION_RIGHT:
-		chBSemWait(get_motor_semaphore_ptr());
-		break;
-	}
+// this implements a simple left-following maze solving algorithm
+static action_t show_next_actions(void) {
+	e_set_led(6, get_ir_delta(IR6) < 150);
+	e_set_led(0, get_tof_dist() > 300);
+	e_set_led(2, get_ir_delta(IR3) < 150);
 }
 
 // this implements a simple left-following maze solving algorithm
 static action_t find_next_action(void) {
-	if (get_ir_delta(IR6) < 100)
+	if (get_ir_delta(IR6) < 150)
 		return ACTION_LEFT;
 	if (get_tof_dist() > 300)
 		return ACTION_STRAIGHT;
-	if (get_ir_delta(IR3) > 100)
+	if (get_ir_delta(IR3) < 150)
 		return ACTION_RIGHT;
 	return ACTION_BACK;
 }
 
 void control_maze(void) {
 	action_queue_push(ACTION_STRAIGHT);
-	//action_queue_push(ACTION_RIGHT);
+	action_queue_push(ACTION_RIGHT);
 	//action_queue_push(ACTION_STRAIGHT);
 	//action_queue_push(ACTION_LEFT);
-	while (1) {
-		action_t current_action = action_queue_pop();
-		//if (!current_action) {
-		//	current_action = find_next_action();
+	//action_queue_push(ACTION_STRAIGHT);
+	while (true) {
+		action_t current_action = ACTION_VOID;
+		if (!(current_action = action_queue_pop())) {
+			//if (!(current_action = find_next_action())) {
+				// signal that we are stuck
+				set_front_led(1);
+				//// here's a sleep so we avoid crashing
+				//chThdSleepMilliseconds(100);
+				//continue;
+
+				while(true) {
+					show_next_actions();
+					chThdSleepMilliseconds(10);
+				}
+			}
 		//}
 
+		set_front_led(0);
+		// save and execute this action
 		saved_path_push(current_action);
-		dispatch_action(current_action);
-		wait_action(current_action);
-		set_body_led(true);
-		break;
+		execute_action(current_action);
 	}
 }

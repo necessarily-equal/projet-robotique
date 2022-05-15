@@ -184,7 +184,7 @@ void turn(float position, rotation_t direction) {
 
 void move(float position, direction_t direction) {
 	motor_thd_paused = false;
-	if (!is_moving && !wall_ahead) {
+	if (!is_moving) {
 		left_motor_set_pos(0);
 		right_motor_set_pos(0);
 		l_target_pos=position * WHEEL_TURN_STEPS / WHEEL_PERIMETER;
