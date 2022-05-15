@@ -1,9 +1,3 @@
-/**
- * @file move_command.h
- * @brief 
- */
-
-
 #ifndef _MOVE_COMMAND_H_
 #define _MOVE_COMMAND_H_
 
@@ -16,13 +10,13 @@
 /*===========================================================================*/
 
 typedef enum {
-    CLOCKWISE           = 1,
-    COUNTERCLOCKWISE    = -1,
+	CLOCKWISE           = 1,
+	COUNTERCLOCKWISE    = -1,
 } rotation_t;
 
 typedef enum {
-    FORWARD     = 1,
-    BACKWARD    = -1,
+	FORWARD     = 1,
+	BACKWARD    = -1,
 } direction_t;
 
 /*===========================================================================*/

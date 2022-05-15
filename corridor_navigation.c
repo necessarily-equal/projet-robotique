@@ -44,6 +44,8 @@
 #define CORRIDOR_NAV_THD_PERIOD         100
 #define CORRIDOR_NAV_THD_ACTIVE_PERIOD  50
 
+#define CLAMP(a, min, max) (((a)<(min)) ? (min) : (((a)>(max))? (max) : (a)))
+
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
@@ -63,39 +65,31 @@ static BSEMAPHORE_DECL(corridor_end_detected_semaphore, TRUE);
 /*===========================================================================*/
 
 bool check_corridor_end(void) {
-    if(get_ir_delta(IR3) < WALL_EDGE_THLD) return true;
-    if(get_ir_delta(IR6) < WALL_EDGE_THLD) return true;
-    if(dist_get_distance() <= END_OF_CORRIDOR_FORWARD_DISTANCE) return true;
-    return false;
+	if(get_ir_delta(IR3) < WALL_EDGE_THLD)
+		return true;
+	if(get_ir_delta(IR6) < WALL_EDGE_THLD)
+		return true;
+	if(dist_get_distance() <= END_OF_CORRIDOR_FORWARD_DISTANCE)
+		return true;
+	return false;
 }
 
 int16_t pid_regulator(float current, float target)
 {
-    float error = 0.0f;
-    float control = 0.0f;
-    float derivative = 0.0f;
-    //Static for integral and derivative
-    static float sum_error = 0.0f;
-    static float last_error = 0.0f;
-    //Calculate the error
-    error = current - target;
+	static float sum_error = 0.0f;
+	static float last_error = 0.0f;
 
-    //if(fabs(error) < LINK_ERROR_THRESHOLD) return 0;
-    //Calculate the integral
-    sum_error += error;
-    //Calcualte the derivative
-    derivative = error - last_error;
+	float error = current - target;
+	sum_error += error;
+	sum_error = CLAMP(sum_error, -MAX_SUM_ERROR, MAX_SUM_ERROR);
 
-    if(sum_error > MAX_SUM_ERROR) sum_error = MAX_SUM_ERROR;
-	else if(sum_error < -MAX_SUM_ERROR) sum_error = -MAX_SUM_ERROR;
+	float derivative = error - last_error;
 
-    last_error = error;
-    control = LINK_KP * error + LINK_KI * sum_error + LINK_KD * derivative;
-    //output clamping
-    if(control > LINK_UPPER_CLAMP) control = LINK_UPPER_CLAMP;
-	else if(control < LINK_LOWER_CLAMP) control = LINK_LOWER_CLAMP;
+	last_error = error;
 
-    return (int16_t)control;
+	float control = LINK_KP * error + LINK_KI * sum_error + LINK_KD * derivative;
+
+	return (int16_t) CLAMP(control, LINK_LOWER_CLAMP, LINK_UPPER_CLAMP);
 }
 
 void corridor_pid_control(void) {
@@ -118,26 +112,24 @@ void corridor_pid_control(void) {
 static THD_WORKING_AREA(wa_corridor_nav_thd, 1024);
 static THD_FUNCTION(corridor_nav_thd, arg)
 {
-    chRegSetThreadName(__FUNCTION__);
+	chRegSetThreadName(__FUNCTION__);
 	(void)arg;
 
-    systime_t time;
+	while (!chThdShouldTerminateX()) {
+		systime_t time = chVTGetSystemTime();
 
-    while (!chThdShouldTerminateX()) {
-        time = chVTGetSystemTime();
-        //Thread body
-        if (!corridor_nav_thd_paused) {
-            while (!corridor_end_detected) {
-                corridor_end_detected = check_corridor_end();
-                corridor_pid_control();
-                chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_ACTIVE_PERIOD));
-            }
-            corridor_nav_thd_paused = true;
-            chBSemSignal(&corridor_end_detected_semaphore);
-        }
-        //Thread refresh rate
-        chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_PERIOD));
-    }
+		if (!corridor_nav_thd_paused) {
+			while (!corridor_end_detected) {
+				corridor_end_detected = check_corridor_end();
+				corridor_pid_control();
+				chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_ACTIVE_PERIOD));
+			}
+			corridor_nav_thd_paused = true;
+			chBSemSignal(&corridor_end_detected_semaphore);
+		}
+
+		chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_PERIOD));
+	}
 	chThdExit(0);
 }
 
@@ -146,24 +138,24 @@ static THD_FUNCTION(corridor_nav_thd, arg)
 /*===========================================================================*/
 
 void create_corridor_navigation_thd(void) {
-    chThdCreateStatic(wa_corridor_nav_thd, sizeof(wa_corridor_nav_thd),
-                      NORMALPRIO, corridor_nav_thd, NULL);
+	chThdCreateStatic(wa_corridor_nav_thd, sizeof(wa_corridor_nav_thd),
+	                  NORMALPRIO, corridor_nav_thd, NULL);
 }
 
 void disable_corridor_navigation_thd(void) {
-    corridor_nav_thd_paused = true;
+	corridor_nav_thd_paused = true;
 }
 
 bool corridor_navigation_thd_status(void) {
-    return corridor_nav_thd_paused;
+	return corridor_nav_thd_paused;
 }
 
 void navigate_corridor(void) {
-    corridor_nav_thd_paused = false;
-    front_wall_detected = false;
-    corridor_end_detected = false;
+	corridor_nav_thd_paused = false;
+	front_wall_detected = false;
+	corridor_end_detected = false;
 }
 
 binary_semaphore_t *get_corridor_end_detected_semaphore_ptr(void) {
-    return &corridor_end_detected_semaphore;
+	return &corridor_end_detected_semaphore;
 }

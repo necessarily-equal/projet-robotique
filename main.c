@@ -57,19 +57,19 @@ CONDVAR_DECL(bus_condvar);
 /*===========================================================================*/
 
 static void init_all(void){
-    halInit();
-    chSysInit();
-    mpu_init();
+	halInit();
+	chSysInit();
+	mpu_init();
 
-    com_serial_start();
-//  usb_start(); if not using bluetooth
+	com_serial_start();
+	//  usb_start(); if not using bluetooth
 
-    create_mic_selector_thd();
+	create_mic_selector_thd();
 
-    init_motors_thd();
-    dist_init();
-    sensors_init();
-    create_corridor_navigation_thd();
+	init_motors_thd();
+	dist_init();
+	sensors_init();
+	create_corridor_navigation_thd();
 }
 
 static bool check_asks_for_replay_of_saved_actions(void) {
@@ -108,5 +108,5 @@ uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
 void __stack_chk_fail(void)
 {
-    chSysHalt("Stack smashing detected");
+	chSysHalt("Stack smashing detected");
 }
