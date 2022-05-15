@@ -26,6 +26,7 @@
 #include <corridor_navigation.h>
 //#include <maze_control.h>
 #include <mic_remote_control.h>
+#include <maze_navigator.h>
 #include <move_command.h>
 #include <communication.h>
 //#include <lfr_regulator.h>
@@ -64,8 +65,7 @@ static void init_all(void){
 
     create_mic_selector_thd();
 
-    create_motor_thd();
-    set_default_speed();
+    init_motors_thd();
     sensors_init();
     create_corridor_navigation_thd();
 }
