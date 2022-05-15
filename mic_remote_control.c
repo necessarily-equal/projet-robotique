@@ -41,7 +41,7 @@
 #define FREQ_U_TURN     		20  //312Hz
 #define FREQ_TURN_LEFT  		22  //344Hz
 #define FREQ_TURN_RIGHT 		24  //375Hz
-#define FREQ_STRAIGHT    		26  //406Hz
+#define FREQ_STRAIGHT   		26  //406Hz
 
 //Frequencies ranges (attributed to center frequency plus minus one)
 #define FREQ_U_TURN_LOW         (FREQ_U_TURN-1)
@@ -95,10 +95,10 @@ static action_t identify_frequency(uint16_t freq) {
 }
 
 void mic_remote(float* data){
-    float max_norm = MIN_VALUE_THRESHOLD;
-    int16_t max_norm_index = 0;
+	float max_norm = MIN_VALUE_THRESHOLD;
+	int16_t max_norm_index = 0;
 
-    //search for the highest peak
+	//search for the highest peak
 	for(uint16_t i = MIN_FREQ ; i <= MAX_FREQ ; i++){
 		if(data[i] > max_norm){
 			max_norm = data[i];
@@ -136,10 +136,10 @@ void mic_remote(float* data){
  * @param num_samples   Tells how many data we get in total (tpy:640 see above)
  */
 void process_audio_data(int16_t *data, uint16_t num_samples){
-    /*  We get 160 samples per mic every 10ms. So we fill the samples buffers
-     *  to reach 1024 samples, then we compute the FFTs.
-     *  Sw we fill the samples buffers to reach
-     */
+	/*  We get 160 samples per mic every 10ms. So we fill the samples buffers
+	 *  to reach 1024 samples, then we compute the FFTs.
+	 *  Sw we fill the samples buffers to reach
+	 */
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
 

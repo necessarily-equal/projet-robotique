@@ -1,8 +1,3 @@
-/**
- * @file    mic_processing.h
- * @brief   Exported functions for e-puck 2 audio control
- */
-
 #ifndef _MOD_AUDIO_PROCESSING_H_
 #define _MOD_AUDIO_PROCESSING_H_
 

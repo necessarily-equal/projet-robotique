@@ -56,22 +56,22 @@ static thread_t* ptr_ir_thd = NULL;
 static THD_WORKING_AREA(wa_ir_thd, 128);
 static THD_FUNCTION(ir_thd, arg)
 {
-    chRegSetThreadName(__FUNCTION__);
+	chRegSetThreadName(__FUNCTION__);
 	(void)arg;
 
-    messagebus_topic_t *prox_topic = messagebus_find_topic_blocking(&bus, "/proximity");
+	messagebus_topic_t *prox_topic = messagebus_find_topic_blocking(&bus, "/proximity");
 
-    while (chThdShouldTerminateX() == false){
-        messagebus_topic_wait(prox_topic, &prox_values, sizeof(prox_values));
-        chThdSleepMilliseconds(IR_PERIOD);
-    }
+	while (chThdShouldTerminateX() == false){
+		messagebus_topic_wait(prox_topic, &prox_values, sizeof(prox_values));
+		chThdSleepMilliseconds(IR_PERIOD);
+	}
 
-    chThdExit(0);
+	chThdExit(0);
 }
 
 static void ir_create_thd(void)
 {
-    ptr_ir_thd = chThdCreateStatic(wa_ir_thd, sizeof(wa_ir_thd),
+	ptr_ir_thd = chThdCreateStatic(wa_ir_thd, sizeof(wa_ir_thd),
 	                               NORMALPRIO, ir_thd, NULL);
 }
 
@@ -88,5 +88,5 @@ void sensors_init(void)
 
 uint16_t get_ir_delta(ir_id_t ir_number)
 {
-    return prox_values.delta[ir_number];
+	return prox_values.delta[ir_number];
 }

@@ -24,29 +24,28 @@
 /* Module constants.                                                         */
 /*===========================================================================*/
 //Geometric constants
-#define PI                  	3.1415926536f
-#define WHEEL_SEPARATION    	5.35f   // [cm]
-#define WHEEL_PERIMETER     	13      // [cm]
-#define EPUCK_PERIMETER     	(PI*WHEEL_SEPARATION)
+#define PI                  3.1415926536f
+#define WHEEL_SEPARATION    5.35f // [cm]
+#define WHEEL_PERIMETER     13    // [cm]
+#define EPUCK_PERIMETER     (PI*WHEEL_SEPARATION)
 //Adjusted manoeuvre based on experiments
-#define ADJUSTED_U_TURN			(EPUCK_PERIMETER/2)*0.98075
-#define ADJUSTED_90DEG_TURN 	ADJUSTED_U_TURN/2
+#define ADJUSTED_U_TURN     (EPUCK_PERIMETER/2)*0.98075
+#define ADJUSTED_90DEG_TURN ADJUSTED_U_TURN/2
 //Speed constants
 #define NULL_SPEED          0
-#define MAX_SPEED			800
+#define MAX_SPEED           800
 //Steppers constants
-#define WHEEL_TURN_STEPS    1000    //Number of steps for one turn
+#define WHEEL_TURN_STEPS    1000 //Number of steps for one turn
 //Wall collision
-#define WALL_THLD			1500
+#define WALL_THLD           1500
 //Thread constants
-#define MOTOR_THD_PERIOD	50
+#define MOTOR_THD_PERIOD    50
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
 static bool is_moving = false;
-static bool wall_ahead = false;
 static bool rotation_mode = false;
 static bool motor_thd_paused = false;
 static bool collision_enabled = false;
@@ -69,13 +68,10 @@ static BSEMAPHORE_DECL(move_command_finished, TRUE);
 /* Module local functions.                                                   */
 /*===========================================================================*/
 
-bool collision(void) {
+bool wall_ahead(void) {
 	//Front
 	if((get_ir_delta(IR1) > WALL_THLD) && collision_enabled) return true;
 	if((get_ir_delta(IR8) > WALL_THLD) && collision_enabled) return true;
-	//Rear
-	//if(get_ir_delta(IR4) > WALL_THLD) return true;
-	//if(get_ir_delta(IR5) > WALL_THLD) return true;
 	return false;
 }
 
@@ -123,8 +119,7 @@ static THD_FUNCTION(motor_thd, arg) {
 	systime_t time;
 
 	while (true) {
-		wall_ahead = collision();
-		if (wall_ahead) stop_moving();
+		if (wall_ahead()) stop_moving();
 		else {
 			if (motor_thd_paused) {
 				left_motor_set_speed(NULL_SPEED);
