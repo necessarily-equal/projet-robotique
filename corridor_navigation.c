@@ -37,6 +37,7 @@
 #define MAX_SUM_ERROR 			    100
 //Walls constants.
 #define WALL_EDGE_THLD              100 // IR3 & IR6
+#define END_OF_CORRIDOR_FORWARD_DISTANCE 80 // mm
 #define FRONT_WALL_THLD             1500 // IR1 & IR8
 #define FRONT_SIDE_WALL_THLD        1000 // IR2 & IR7
 //Thread constants.
@@ -64,6 +65,7 @@ static BSEMAPHORE_DECL(corridor_end_detected_semaphore, TRUE);
 bool check_corridor_end(void) {
     if(get_ir_delta(IR3) < WALL_EDGE_THLD) return true;
     if(get_ir_delta(IR6) < WALL_EDGE_THLD) return true;
+    if(dist_get_distance() <= END_OF_CORRIDOR_FORWARD_DISTANCE) return true;
     return false;
 }
 
