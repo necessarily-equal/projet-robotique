@@ -27,7 +27,6 @@ typedef enum ir_id_t {
 
 void sensors_init(void);
 
-uint16_t get_tof_dist(void);
 uint16_t get_ir_delta(ir_id_t ir_number);
 
 #endif /* _SENSORS_H_ */

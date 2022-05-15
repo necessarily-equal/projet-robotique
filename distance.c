@@ -10,6 +10,8 @@
 
 #include "distance.h"
 
+static uint16_t distance = 0;
+
 static const uint16_t hysteresis_close_threshold = 90;
 static const uint16_t hysteresis_far_threshold = 100;
 
@@ -18,28 +20,22 @@ static bool obstacle_is_close = true;
 
 static VL53L0X_Dev_t device;
 
-static THD_WORKING_AREA(waDistanceThd, 256);
+static THD_WORKING_AREA(waDistanceThd, 1024);
 static THD_FUNCTION(DistanceThd, arg) {
 
     chRegSetThreadName(__FUNCTION__);
     (void)arg; // avoid warning for unused argument
 
     while (chThdShouldTerminateX() == false) {
-        chprintf(&SD3, "hi\r\n");
-
-        //uint16_t distance = VL53L0X_get_dist_mm();
-
         // this updates device with the mesured range, if and only if the mesurement succeeded
         VL53L0X_Error error = VL53L0X_getLastMeasure(&device);
-        chprintf(&SD3, "error: %i\r\n", error != VL53L0X_ERROR_NONE);
         if (error == VL53L0X_ERROR_NONE) {
-            uint16_t distance = device.Data.LastRangeMeasure.RangeMilliMeter;
+            distance = device.Data.LastRangeMeasure.RangeMilliMeter;
 
             if (obstacle_is_close && distance > hysteresis_far_threshold)
                 obstacle_is_close = false;
             else if (!obstacle_is_close && distance < hysteresis_close_threshold)
                 obstacle_is_close = true;
-            chprintf(&SD3, "distance: %i, obstacle_is_close: %i\r\n\n", distance, obstacle_is_close);
         }
 
         chThdSleepMilliseconds(20);
@@ -47,6 +43,7 @@ static THD_FUNCTION(DistanceThd, arg) {
 }
 
 void dist_init(void) {
+    i2c_start();
     device.I2cDevAddr = VL53L0X_ADDR;
 
     VL53L0X_init(&device);
@@ -59,3 +56,8 @@ void dist_init(void) {
 bool dist_obstacle_is_close(void) {
     return obstacle_is_close;
 }
+
+uint16_t dist_get_distance(void) {
+    return distance;
+}
+

@@ -14,6 +14,7 @@ CSRC += ./main.c \
 		./mic_remote_control.c \
 		./move_command.c \
 		./ir_sensors.c \
+		./distance.c \
 		./maze_navigator.c \
 		./corridor_navigation.c \
 		./action_queue.c

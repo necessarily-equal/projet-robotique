@@ -45,43 +45,13 @@ CONDVAR_DECL(bus_condvar);
 /* Module local variables.                                                   */
 /*===========================================================================*/
 
-static uint16_t dist1_mm = 0u;
-static uint16_t dist2_mm = 0u;
-static uint16_t dist3_mm = 0u;
 static proximity_msg_t prox_values = {0u};
 
 /*===========================================================================*/
 /* Module thread pointers.                                                   */
 /*===========================================================================*/
 
-static thread_t* ptr_tof_thd = NULL;
 static thread_t* ptr_ir_thd = NULL;
-
-/*===========================================================================*/
-/* Module threads.                                                           */
-/*===========================================================================*/
-
-static THD_WORKING_AREA(wa_tof_thd, 128);
-static THD_FUNCTION(tof_thd, arg)
-{
-    chRegSetThreadName(__FUNCTION__);
-	(void)arg;
-
-    while (chThdShouldTerminateX() == false) {
-        dist3_mm = dist2_mm;
-        dist2_mm = dist1_mm;
-        dist1_mm = VL53L0X_get_dist_mm();
-        chThdSleepMilliseconds(TOF_PERIOD);
-    }
-
-    chThdExit(0);
-}
-
-static void tof_create_thd(void)
-{
-    ptr_tof_thd = chThdCreateStatic(wa_tof_thd, sizeof(wa_tof_thd),
-	                                NORMALPRIO, tof_thd, NULL);
-}
 
 static THD_WORKING_AREA(wa_ir_thd, 128);
 static THD_FUNCTION(ir_thd, arg)
@@ -113,18 +83,10 @@ void sensors_init(void)
 {
 	messagebus_init(&bus, &bus_lock, &bus_condvar);
 	proximity_start();
-	VL53L0X_start();
-	tof_create_thd();
-    ir_create_thd();
-    calibrate_ir();
+	ir_create_thd();
 }
 
 uint16_t get_ir_delta(ir_id_t ir_number)
 {
     return prox_values.delta[ir_number];
-}
-
-uint16_t get_tof_dist(void)
-{
-    return (dist1_mm + dist2_mm + dist3_mm)/NB_AVG;
 }

@@ -36,7 +36,7 @@ static void execute_action(action_t action) {
 // this implements a simple left-following maze solving algorithm
 static action_t show_next_actions(void) {
 	e_set_led(6, get_ir_delta(IR6) < 150);
-	e_set_led(0, get_tof_dist() > 300);
+	e_set_led(0, dist_get_distance() > 80);
 	e_set_led(2, get_ir_delta(IR3) < 150);
 }
 
@@ -44,7 +44,7 @@ static action_t show_next_actions(void) {
 static action_t find_next_action(void) {
 	if (get_ir_delta(IR6) < 150)
 		return ACTION_LEFT;
-	if (get_tof_dist() > 300)
+	if (dist_get_distance() > 80)
 		return ACTION_STRAIGHT;
 	if (get_ir_delta(IR3) < 150)
 		return ACTION_RIGHT;
