@@ -16,8 +16,8 @@
 /*===========================================================================*/
 
 typedef enum {
-    CLOCKWISE           = -1,
-    COUNTERCLOCKWISE    = 1,
+    CLOCKWISE           = 1,
+    COUNTERCLOCKWISE    = -1,
 } rotation_t;
 
 typedef enum {
