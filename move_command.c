@@ -39,7 +39,7 @@
 //Wall collision
 #define WALL_THLD			1500
 //Thread constants
-#define MOTOR_THD_PERIOD	100
+#define MOTOR_THD_PERIOD	50
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
