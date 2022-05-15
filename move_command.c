@@ -33,7 +33,6 @@
 #define ADJUSTED_90DEG_TURN 	ADJUSTED_U_TURN/2
 //Speed constants
 #define NULL_SPEED          0
-#define DEFAULT_SPEED		500
 #define MAX_SPEED			800
 //Steppers constants
 #define WHEEL_TURN_STEPS    1000    //Number of steps for one turn
@@ -204,6 +203,7 @@ void u_turn(void) {
 }
 
 void set_lr_speed(int left_speed, int right_speed) {
+	if (is_moving) stop_moving();
 	if (left_speed > MAX_SPEED)
 		left_motor_set_speed(MAX_SPEED);
 	else if (left_speed < -MAX_SPEED)

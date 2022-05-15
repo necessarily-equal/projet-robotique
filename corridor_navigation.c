@@ -64,7 +64,7 @@ bool check_front_sensors(void) {
     //Front checks
     if(get_ir_delta(IR1) > FRONT_WALL_THLD) return true;
     if(get_ir_delta(IR8) > FRONT_WALL_THLD) return true;
-    //Front left and right checks
+    //Front left and right checks, too noisy !
     //if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
     //if(get_ir_delta(IR7) > FRONT_SIDE_WALL_THLD) return true;
     return false;
@@ -114,8 +114,8 @@ void corridor_pid_control(void) {
 
     if(fabs(delta_speed) < CORRECTION_THLD) delta_speed = 0;
 
-    set_lr_speed(get_current_speed() + delta_speed,
-                 get_current_speed() - delta_speed);
+    set_lr_speed(DEFAULT_SPEED + delta_speed,
+                 DEFAULT_SPEED - delta_speed);
 }
 
 /*===========================================================================*/
