@@ -49,6 +49,8 @@ int16_t get_current_speed(void);
 
 void set_lr_speed(int left_speed, int right_speed);
 
+void end_manual_speed(void);
+
 binary_semaphore_t *get_motor_semaphore_ptr(void);
 
 #endif /* _MOVE_COMMAND_H_ */

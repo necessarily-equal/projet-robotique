@@ -40,7 +40,8 @@
 #define FRONT_WALL_THLD             1500 // IR1 & IR8
 #define FRONT_SIDE_WALL_THLD        1000 // IR2 & IR7
 //Thread constants.
-#define CORRIDOR_NAV_THD_PERIOD     100
+#define CORRIDOR_NAV_THD_PERIOD         100
+#define CORRIDOR_NAV_THD_ACTIVE_PERIOD  50
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
@@ -59,16 +60,6 @@ static BSEMAPHORE_DECL(corridor_end_detected_semaphore, TRUE);
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
-
-bool check_front_sensors(void) {
-    //Front checks
-    if(get_ir_delta(IR1) > FRONT_WALL_THLD) return true;
-    if(get_ir_delta(IR8) > FRONT_WALL_THLD) return true;
-    //Front left and right checks, too noisy !
-    //if(get_ir_delta(IR2) > FRONT_SIDE_WALL_THLD) return true;
-    //if(get_ir_delta(IR7) > FRONT_SIDE_WALL_THLD) return true;
-    return false;
-}
 
 bool check_corridor_end(void) {
     if(get_ir_delta(IR3) < WALL_EDGE_THLD) return true;
@@ -131,15 +122,18 @@ static THD_FUNCTION(corridor_nav_thd, arg)
     systime_t time;
 
     while (!chThdShouldTerminateX()) {
-        //Thread body
-        while (!front_wall_detected && !corridor_end_detected) {
-            corridor_end_detected = check_corridor_end();
-            corridor_pid_control();
-        }
-        chBSemSignal(&corridor_end_detected_semaphore);
-        corridor_nav_thd_paused = true;
-        //Thread refresh rate
         time = chVTGetSystemTime();
+        //Thread body
+        if (!corridor_nav_thd_paused) {
+            while (!corridor_end_detected) {
+                corridor_end_detected = check_corridor_end();
+                corridor_pid_control();
+                chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_ACTIVE_PERIOD));
+            }
+            corridor_nav_thd_paused = true;
+            chBSemSignal(&corridor_end_detected_semaphore);
+        }
+        //Thread refresh rate
         chThdSleepUntilWindowed(time, time + MS2ST(CORRIDOR_NAV_THD_PERIOD));
     }
 	chThdExit(0);
