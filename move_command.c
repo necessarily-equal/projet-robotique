@@ -83,14 +83,8 @@ bool collision_ahead(void) {
 }
 
 void update_current_position(void) {
-	if (rotation_enabled) {
-		l_pos = current_rotation * left_motor_get_pos();
-		r_pos = current_rotation * right_motor_get_pos();
-	}
-	else {
-		l_pos = current_direction * left_motor_get_pos();
-		r_pos = current_direction * right_motor_get_pos();
-	}
+	l_pos = current_rotation * left_motor_get_pos();
+	r_pos = current_rotation * right_motor_get_pos();
 }
 
 bool position_reached(void) {
