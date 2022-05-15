@@ -57,12 +57,6 @@ static bool corridor_end_detected = false;
 static BSEMAPHORE_DECL(corridor_end_detected_semaphore, TRUE);
 
 /*===========================================================================*/
-/* Module thread pointers.                                                   */
-/*===========================================================================*/
-
-static thread_t *ptr_corridor_nav_thd;
-
-/*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
 
@@ -139,11 +133,10 @@ static THD_FUNCTION(corridor_nav_thd, arg)
     while (!chThdShouldTerminateX()) {
         //Thread body
         while (!front_wall_detected && !corridor_end_detected) {
-            front_wall_detected = check_front_sensors();
             corridor_end_detected = check_corridor_end();
             corridor_pid_control();
         }
-        stop_move();
+        set_current_speed(0);
         chBSemSignal(&corridor_end_detected_semaphore);
         corridor_nav_thd_paused = true;
         //Thread refresh rate
@@ -158,8 +151,8 @@ static THD_FUNCTION(corridor_nav_thd, arg)
 /*===========================================================================*/
 
 void create_corridor_navigation_thd(void) {
-    ptr_corridor_nav_thd = chThdCreateStatic(wa_corridor_nav_thd,
-        sizeof(wa_corridor_nav_thd), NORMALPRIO, corridor_nav_thd, NULL);
+    chThdCreateStatic(wa_corridor_nav_thd, sizeof(wa_corridor_nav_thd),
+                      NORMALPRIO, corridor_nav_thd, NULL);
 }
 
 void disable_corridor_navigation_thd(void) {
