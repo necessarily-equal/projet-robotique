@@ -1,8 +1,10 @@
 #include "action_queue.h"
 #include "move_command.h"
 #include "corridor_navigation.h"
+#include "distance.h"
 #include "ir_sensors.h"
 
+#include "selector.h"
 #include "leds.h"
 
 static void execute_action(action_t action) {
@@ -37,10 +39,10 @@ static void execute_action(action_t action) {
 }
 
 // this implements a simple left-following maze solving algorithm
-static action_t show_next_actions(void) {
-	e_set_led(6, get_ir_delta(IR6) < 150);
-	e_set_led(0, dist_get_distance() > 80);
-	e_set_led(2, get_ir_delta(IR3) < 150);
+static void show_next_actions(void) {
+	set_led(3, get_ir_delta(IR6) < 150);
+	set_led(0, dist_get_distance() > 80);
+	set_led(1, get_ir_delta(IR3) < 150);
 }
 
 // this implements a simple left-following maze solving algorithm

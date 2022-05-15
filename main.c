@@ -28,6 +28,7 @@
 #include <mic_remote_control.h>
 #include <maze_navigator.h>
 #include <move_command.h>
+#include <distance.h>
 #include <communication.h>
 #include <action_queue.h>
 //#include <lfr_regulator.h>

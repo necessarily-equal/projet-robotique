@@ -9,3 +9,4 @@
 
 void dist_init(void);
 bool dist_obstacle_is_close(void);
+uint16_t dist_get_distance(void);

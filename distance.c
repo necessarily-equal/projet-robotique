@@ -7,6 +7,7 @@
 #include <chprintf.h>
 
 #include <sensors/VL53L0X/VL53L0X.h>
+#include <i2c_bus.h>
 
 #include "distance.h"
 

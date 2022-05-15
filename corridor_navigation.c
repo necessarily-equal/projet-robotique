@@ -17,6 +17,7 @@
 
 // Module headers
 #include "corridor_navigation.h"
+#include "distance.h"
 #include "ir_sensors.h"
 #include "move_command.h"
 
